@@ -4,13 +4,13 @@ A comprehensive analytics and hiscores platform for the [Ferox.ps](https://ferox
 
 ## Features
 
-- **Live player stats and hiscores** — track skill progress and server-wide rankings, updated automatically from the Ferox API
-- **Grand Exchange analytics** — live trading data, item prices, and transaction history from the in-game GE
-- **Snapshot history** — every player lookup saves a snapshot, building a progression timeline
-- **Competitions** — create and track group XP competitions with live leaderboards
-- **Groups** — clans can manage members, set ranks, and receive Discord notifications via the companion bot
-- **Player comparison** — compare up to 5 players side-by-side across all skills
-- **Mobile-friendly UI** — fully responsive design with instant player lookup and data visualizations
+- **Live player stats and hiscores** â€” track skill progress and server-wide rankings, updated automatically from the Ferox API
+- **Grand Exchange analytics** â€” live trading data, item prices, and transaction history from the in-game GE
+- **Snapshot history** â€” every player lookup saves a snapshot, building a progression timeline
+- **Competitions** â€” create and track group XP competitions with live leaderboards
+- **Groups** â€” clans can manage members, set ranks, and receive Discord notifications via the companion bot
+- **Player comparison** â€” compare up to 5 players side-by-side across all skills
+- **Mobile-friendly UI** â€” fully responsive design with instant player lookup and data visualizations
 
 > This project is not affiliated with Jagex Ltd or the official Old School RuneScape game.
 
@@ -58,7 +58,7 @@ Open `.env.local` and fill in your values:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard ? Project Settings ? API |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard ? Project Settings ? API (secret) |
 | `CRON_SECRET` | Generate with `openssl rand -base64 32` |
-| `NEXT_PUBLIC_FEROX_API_BASE` | Optional — defaults to `https://ferox.ps/api` |
+| `NEXT_PUBLIC_FEROX_API_BASE` | Optional â€” defaults to `https://ferox.ps/api` |
 
 ### 3. Set up the database
 
@@ -99,7 +99,6 @@ lib/              # Shared server-side utilities
   admin-auth.ts   # Admin authentication helper for /api/admin/* routes
   supabase*.ts    # Supabase client factories
 public/           # Static assets (rank icons)
-supabase/         # Email templates
 ```
 
 ---
