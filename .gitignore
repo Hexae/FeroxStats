@@ -41,6 +41,7 @@ next-env.d.ts
 # editor
 .vscode/
 .idea/
+.agents/*
 
 # copilot
 skills-lock.json
@@ -52,3 +53,13 @@ __pycache__/
 # bot
 bot/node_modules/
 bot/dist/
+
+# Supabase
+supabase/
+
+# Backend
+update_tracker.py
+import_trade_history.py
+
+# gitignore
+.gitignore
