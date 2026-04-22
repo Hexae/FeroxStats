@@ -1,0 +1,170 @@
+﻿@import "tailwindcss";
+@source "../app";
+@source "../components";
+
+/* ── WiseOldMan-inspired navy palette ── */
+@theme {
+  --color-surface:    hsl(220 23% 11%); /* navbar, sidebar, card bg */
+  --color-surface-2:  hsl(220 23% 15%); /* hover states, alt card bg */
+  --color-border:     hsl(220 23% 20%); /* borders, dividers */
+  --color-border-alt: hsl(220 23% 25%); /* subtle borders */
+  --color-muted:      hsl(220 23% 43%); /* muted/dim text */
+  --color-secondary:  hsl(220 20% 64%); /* secondary text */
+  --color-gold:       #f59e0b;
+  --color-gold-light: #fbbf24;
+}
+
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: hsl(220 23% 4%);
+  color: hsl(220 18% 83%);
+  min-height: 100vh;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(220 23% 25%); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(220 23% 31%); }
+
+.scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fadeUp 0.4s ease forwards; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-fade-in { animation: fadeIn 0.3s ease forwards; }
+
+/* ── Gradient text ── */
+.text-gradient-green {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Noise overlay texture ── */
+.noise-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.4;
+  border-radius: inherit;
+}
+
+/* ── Stat card hover glow ── */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+/* ── Skill card maxed glow ── */
+.skill-maxed {
+  box-shadow: 0 0 12px rgba(245,158,11,0.15);
+}
+
+/* ══════════════════════════════════════════════
+   Player Page System
+   ══════════════════════════════════════════════ */
+
+/* Hero: dot-grid backdrop + isolated stacking context */
+.player-hero {
+  isolation: isolate;
+}
+.player-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(148,163,184,0.055) 1px, transparent 1px);
+  background-size: 26px 26px;
+  -webkit-mask-image: linear-gradient(to bottom, black 25%, transparent 75%);
+  mask-image: linear-gradient(to bottom, black 25%, transparent 75%);
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+/* Glass panel base — hover styles are applied per-element via Tailwind utilities */
+.glass-card {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+}
+
+/* Shimmer top-edge accent line */
+.shimmer-top {
+  position: relative;
+}
+.shimmer-top::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(56,189,248,0.35), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Gradient text variants */
+.text-gradient-ice {
+  background: linear-gradient(135deg, #f0f9ff 5%, #7dd3fc 50%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.text-gradient-gold {
+  background: linear-gradient(135deg, #fef9c3 5%, #fbbf24 55%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Skill progress meter with staggered entry animation */
+@keyframes meterExpand {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.meter-bar {
+  transform-origin: left;
+  animation: meterExpand 0.65s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Floating ambient background orbs */
+@keyframes orbFloat {
+  0%, 100% { transform: translateY(0px)   scale(1);    opacity: 0.65; }
+  50%       { transform: translateY(-14px) scale(1.04); opacity: 0.85; }
+}
+.ambient-orb {
+  animation: orbFloat 8s ease-in-out infinite;
+  filter: blur(55px);
+  pointer-events: none;
+}
+
+/* Skill category left-border strips */
+.cat-combat  { border-left: 2px solid rgba(248,113,113,0.5); padding-left: 10px; }
+.cat-gather  { border-left: 2px solid rgba(52,211,153,0.5);  padding-left: 10px; }
+.cat-artisan { border-left: 2px solid rgba(96,165,250,0.5);  padding-left: 10px; }
+.cat-support { border-left: 2px solid rgba(167,139,250,0.5); padding-left: 10px; }
+
