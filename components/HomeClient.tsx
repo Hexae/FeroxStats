@@ -12,9 +12,8 @@ const FEATURES = [
     gradient: 'from-emerald-900/25 to-emerald-800/8',
     border: 'hover:border-emerald-900/30',
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-        <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" />
-      </svg>
+      <img src="/stats_icon.png" alt="" aria-hidden className="w-5 h-5 object-contain" />
+
     ),
   },
   {
@@ -24,9 +23,7 @@ const FEATURES = [
     gradient: 'from-amber-900/25 to-amber-800/5',
     border: 'hover:border-amber-900/25',
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-        <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-      </svg>
+      <img src="/hiscores_icon.png" alt="" aria-hidden className="w-5 h-5 object-contain" />
     ),
   },
   {
@@ -36,9 +33,8 @@ const FEATURES = [
     gradient: 'from-emerald-900/20 to-emerald-800/5',
     border: 'hover:border-emerald-900/25',
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-      </svg>
+      <img src="/xp_icon.png" alt="" aria-hidden className="w-5 h-5 object-contain" />
+
     ),
   },
   {
