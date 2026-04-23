@@ -6,46 +6,76 @@ import Link from 'next/link';
 
 const FEATURES = [
   {
-    icon: '⚔️',
+    bg: '/skills.png',
     title: 'Full Skill Breakdown',
-    desc: 'View all 23 skills with level, XP, and server rank for any Ferox.ps player.',
+    desc: 'View all 24 skills with level, XP, and server rank for any Ferox.ps player.',
     gradient: 'from-emerald-900/25 to-emerald-800/8',
     border: 'hover:border-emerald-900/30',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+        <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" />
+      </svg>
+    ),
   },
   {
-    icon: '🏆',
+    bg: '/hiscores.png',
     title: 'Hiscores & Rankings',
     desc: 'Browse the overall hiscore table and drill into individual skill rankings.',
     gradient: 'from-amber-900/25 to-amber-800/5',
     border: 'hover:border-amber-900/25',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+        <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+      </svg>
+    ),
   },
   {
-    icon: '📊',
+    bg: 'xp_progression.png',
     title: 'XP Progress',
     desc: 'Track experience across all skills with clean, readable formatting.',
     gradient: 'from-emerald-900/20 to-emerald-800/5',
     border: 'hover:border-emerald-900/25',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+      </svg>
+    ),
   },
   {
-    icon: '🔎',
+    bg: '/search.png',
     title: 'Instant Lookup',
     desc: 'Search any player by name and see their full stats in seconds.',
     gradient: 'from-blue-900/20 to-blue-800/5',
     border: 'hover:border-blue-900/25',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+        <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+    ),
   },
   {
-    icon: '📱',
+    bg: '/mobile.png',
     title: 'Mobile Friendly',
     desc: 'Fully responsive — check stats on desktop, tablet, or phone.',
     gradient: 'from-purple-900/20 to-purple-800/5',
     border: 'hover:border-purple-900/25',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><line x1="12" y1="18" x2="12.01" y2="18" />
+      </svg>
+    ),
   },
   {
-    icon: '🗄️',
+    bg: '/snapshot.png',
     title: 'Snapshot History',
     desc: 'Every search saves a snapshot, building a history of player progression.',
     gradient: 'from-cyan-900/20 to-cyan-800/5',
     border: 'hover:border-cyan-900/25',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+        <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+      </svg>
+    ),
   },
 ];
 
@@ -200,13 +230,26 @@ export default function HomeClient() {
             <div
               key={i}
               className={`group relative bg-[#1e1c2a]/80 border border-white/[0.07] ${f.border} rounded-2xl p-6 card-hover overflow-hidden`}
+              style={f.bg && !f.bg.endsWith('.gif') && !f.bg.endsWith('.png') ? {
+                backgroundImage: `linear-gradient(to bottom, rgba(30,28,42,0.55) 0%, rgba(30,28,42,0.92) 60%, #1e1c2a 100%), url(${JSON.stringify(f.bg)})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              } : {}}
             >
+              {/* PNG/GIF background — uses img tag so transparency and animation work correctly */}
+              {f.bg && (f.bg.endsWith('.gif') || f.bg.endsWith('.png')) && (
+                <>
+                  <img src={f.bg} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-[#1e1c2a]/40 via-[#1e1c2a]/70 to-[#1e1c2a]" />
+                </>
+              )}
+
               {/* Background gradient fill */}
               <div className={`absolute inset-0 bg-gradient-to-br ${f.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl`} />
 
               <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl bg-[#252333] border border-white/[0.07] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                  <span className="text-2xl">{f.icon}</span>
+                <div className="w-10 h-10 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center mb-4 text-slate-300">
+                  {f.icon}
                 </div>
                 <h3 className="font-bold text-white mb-2 text-lg">{f.title}</h3>
                 <p className="text-slate-400 text-sm leading-relaxed">{f.desc}</p>
