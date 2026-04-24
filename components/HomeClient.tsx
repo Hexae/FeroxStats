@@ -254,6 +254,54 @@ export default function HomeClient() {
           ))}
         </div>
       </section>
+
+      {/* ── Community Driven ── */}
+      <section className="max-w-7xl mx-auto px-4 py-20 border-t border-white/[0.06]">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-extrabold text-white mb-3">Community driven</h2>
+          <p className="text-slate-400 max-w-2xl mx-auto">
+            FeroxStats is an open source project. Anyone in the community can contribute code or ideas to add new features and improvements.
+          </p>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+          <a
+            href="https://github.com/Hexae/RSPS_Stats"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex gap-x-2 items-center whitespace-nowrap justify-center px-5 h-9 rounded-md text-sm font-medium transition-colors bg-gray-700 text-white hover:bg-gray-600 active:opacity-80 shadow-lg"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+              <path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z" />
+            </svg>
+            Contribute on GitHub
+          </a>
+
+          <a
+            href="https://discord.com/invite/feroxps"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex gap-x-2 items-center whitespace-nowrap justify-center px-5 h-9 rounded-md text-sm font-medium transition-colors bg-[#5865F2] text-white hover:bg-[#4752C4] active:opacity-80 shadow-lg"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+              <path d="M19.953 5.672c-1.906-1.53-4.918-1.79-5.047-1.8a.48.48 0 0 0-.473.281c-.004.012-.07.164-.145.398 1.258.21 2.805.64 4.207 1.508a.48.48 0 0 1-.254.887.475.475 0 0 1-.254-.074c-2.402-1.492-5.4-1.566-5.988-1.566S8.414 5.38 6.012 6.87a.48.48 0 0 1-.66-.152.478.478 0 0 1 .156-.66C6.906 5.19 8.453 4.762 9.71 4.55l-.145-.398a.472.472 0 0 0-.473-.28c-.13.012-3.14.27-5.07 1.824C3.016 6.625 1 12.074 1 16.78a.49.49 0 0 0 .063.238c1.39 2.445 5.184 3.082 6.05 3.113a.482.482 0 0 0 .402-.2l.875-1.203c-2.36-.61-3.566-1.645-3.633-1.703-.2-.176-.22-.477-.043-.676s.477-.22.672-.043c.03.027 2.25 1.9 6.613 1.9 4.37 0 6.6-1.895 6.613-1.9a.476.476 0 0 1 .632.715c-.07.063-1.277 1.098-3.637 1.707l.875 1.203c.1.125.234.195.387.195.883-.027 4.676-.664 6.066-3.11a.492.492 0 0 0 .063-.238c0-4.707-2.016-10.156-3.047-11.11zM8.89 14.87c-.922 0-1.672-.86-1.672-1.914s.746-1.914 1.672-1.914 1.676.86 1.676 1.914-.75 1.914-1.676 1.914zm6.22 0c-.926 0-1.676-.86-1.676-1.914s.75-1.914 1.676-1.914 1.672.86 1.672 1.914-.75 1.914-1.672 1.914zm0 0" />
+            </svg>
+            Join our Discord
+          </a>
+
+          <a
+            href="https://patreon.com/feroxstats"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex gap-x-2 items-center whitespace-nowrap justify-center px-5 h-9 rounded-md text-sm font-medium transition-colors bg-[#FF424D] text-white hover:bg-[#E63539] active:opacity-80 shadow-lg"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+              <path d="M14.82 2.41c3.96 0 7.18 3.24 7.18 7.21 0 3.96-3.22 7.18-7.18 7.18-3.97 0-7.21-3.22-7.21-7.18 0-3.97 3.24-7.21 7.21-7.21M2 21.6h3.5V2.41H2V21.6Z" />
+            </svg>
+            See Patreon benefits
+          </a>
+        </div>
+      </section>
     </div>
   );
 }
