@@ -516,6 +516,7 @@ function OverviewTab({
 }) {
   const [volumeRange, setVolumeRange] = useState<VolumeRange>('1D');
   const [remoteTopVolume, setRemoteTopVolume] = useState<[string, number][]>([]);
+  const [mostTradedLoading, setMostTradedLoading] = useState(false);
 
   const rangeFilteredTransactions = useMemo(() => {
     if (volumeRange === 'ALL') return transactions;
@@ -533,6 +534,7 @@ function OverviewTab({
   useEffect(() => {
     let cancelled = false;
     async function loadMostTraded() {
+      setMostTradedLoading(true);
       try {
         const res = await fetch(`/api/ge?tab=most-traded&range=${volumeRange}`, { cache: 'no-store' });
         if (!res.ok) return;
@@ -544,6 +546,8 @@ function OverviewTab({
         setRemoteTopVolume(top);
       } catch {
         if (!cancelled) setRemoteTopVolume([]);
+      } finally {
+        if (!cancelled) setMostTradedLoading(false);
       }
     }
     void loadMostTraded();
@@ -639,29 +643,47 @@ function OverviewTab({
             </div>
           </div>
           <div className="px-5 py-2 border-b border-white/[0.03] flex items-center justify-end">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-neutral-600">Quantity</span>
+            <div className="flex items-center gap-2">
+              {mostTradedLoading && (
+                <span className="inline-block w-3 h-3 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+              )}
+              <span className="text-[10px] uppercase font-bold tracking-wider text-neutral-600">Quantity</span>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto max-h-[360px]">
             <div className="divide-y divide-white/[0.03]">
-              {topVolume.map(([name, val], i) => (
-                <div
-                  key={name}
-                  onClick={() => onItemClick(name)}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.025] cursor-pointer transition-colors group"
-                >
-                  <div className="text-[11px] font-bold text-neutral-600 w-5 text-right">{i + 1}</div>
-                  <ItemIcon name={name} size={28} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm text-neutral-200 group-hover:text-amber-300 truncate transition-colors">
-                      {name}
+              {mostTradedLoading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 px-4 py-3">
+                    <Skeleton className="h-4 w-5" />
+                    <Skeleton className="h-7 w-7 rounded" />
+                    <div className="flex-1 min-w-0">
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ))
+              ) : (
+                topVolume.map(([name, val], i) => (
+                  <div
+                    key={name}
+                    onClick={() => onItemClick(name)}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.025] cursor-pointer transition-colors group"
+                  >
+                    <div className="text-[11px] font-bold text-neutral-600 w-5 text-right">{i + 1}</div>
+                    <ItemIcon name={name} size={28} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-neutral-200 group-hover:text-amber-300 truncate transition-colors">
+                        {name}
+                      </div>
+                    </div>
+                    <div className="font-mono tabular-nums text-[13px] font-medium text-amber-400">
+                      {val.toLocaleString()}
                     </div>
                   </div>
-                  <div className="font-mono tabular-nums text-[13px] font-medium text-amber-400">
-                    {val.toLocaleString()}
-                  </div>
-                </div>
-              ))}
-              {topVolume.length === 0 && (
+                ))
+              )}
+              {!mostTradedLoading && topVolume.length === 0 && (
                 <div className="px-4 py-10 text-center text-xs text-neutral-600 font-medium">
                   No transactions in this range
                 </div>
