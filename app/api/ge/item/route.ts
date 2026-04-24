@@ -4,7 +4,7 @@ import { serviceClient } from '@/lib/supabase-service';
 // GET /api/ge/item?name=Abyssal+whip&limit=100
 export async function GET(request: NextRequest) {
   const name  = request.nextUrl.searchParams.get('name');
-  const limit = Math.min(parseInt(request.nextUrl.searchParams.get('limit') ?? '150', 10), 500);
+  const limit = Math.min(parseInt(request.nextUrl.searchParams.get('limit') ?? '150', 10), 10000);
 
   if (!name) {
     return NextResponse.json({ error: 'name param required' }, { status: 400 });

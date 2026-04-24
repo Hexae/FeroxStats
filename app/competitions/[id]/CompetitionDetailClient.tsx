@@ -396,6 +396,7 @@ function Top5Chart({ chartData, metric }: { chartData: ChartSeries[]; metric: st
 
 export default function CompetitionDetailClient({ id }: { id: string }) {
   const [tab, setTab] = useState<'overview' | 'chart'>('overview');
+  const [now] = useState(() => Date.now());
 
   const { data: comp, isLoading, error } = useSWR<CompetitionDetail>(
     `/api/competitions/${id}`,
@@ -405,7 +406,10 @@ export default function CompetitionDetailClient({ id }: { id: string }) {
 
   if (isLoading) return <LoadingSkeleton />;
 
-  if (error || !comp || (comp as { error?: string }).error) {
+  const isActive = comp?.status === 'active';
+  const isEnding = isActive && comp && (new Date(comp.ends_at).getTime() - now) < 3 * 60 * 60 * 1000;
+
+  if (!comp) {
     return (
       <div className="min-h-screen bg-[hsl(220_23%_7%)] flex items-center justify-center text-center px-4">
         <div>
@@ -419,8 +423,6 @@ export default function CompetitionDetailClient({ id }: { id: string }) {
   }
 
   const emoji = METRIC_EMOJI[comp.metric.toLowerCase()] ?? '⚔️';
-  const isActive = comp.status === 'active';
-  const isEnding = isActive && (new Date(comp.ends_at).getTime() - Date.now()) < 3 * 60 * 60 * 1000;
 
   const statusConfig = {
     active:   { label: '● Ongoing',  cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },

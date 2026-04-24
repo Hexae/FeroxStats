@@ -38,7 +38,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   // Enrich with display names
   const usernames = (data ?? []).map(r => r.username);
-  let nameMap: Record<string, string> = {};
+  const nameMap: Record<string, string> = {};
   if (usernames.length > 0) {
     const { data: players } = await supabase
       .from('players').select('username, display_name').in('username', usernames);

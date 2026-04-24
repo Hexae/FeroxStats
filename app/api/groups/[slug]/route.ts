@@ -54,7 +54,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   // Enrich with player data
   const usernames = (members ?? []).map(m => m.username);
-  let playerMap: Record<string, { display_name: string; total_level: number; total_xp: number; overall_rank: number | null; last_fetched_at: string | null }> = {};
+  const playerMap: Record<string, { display_name: string; total_level: number; total_xp: number; overall_rank: number | null; last_fetched_at: string | null }> = {};
   if (usernames.length > 0) {
     const { data: players } = await supabase
       .from('players')
