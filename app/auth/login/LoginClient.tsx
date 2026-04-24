@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
 import { createClient } from '@/lib/supabase';
 
 export default function LoginClient() {
@@ -11,13 +12,22 @@ export default function LoginClient() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [captchaToken, setCaptchaToken] = useState('');
+  const captchaRef = useRef<HCaptcha>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    if (!captchaToken) { setError('Please complete the CAPTCHA.'); return; }
     setLoading(true);
     const supabase = createClient();
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: err } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: { captchaToken },
+    });
+    captchaRef.current?.resetCaptcha();
+    setCaptchaToken('');
     setLoading(false);
     if (err) { setError(err.message); return; }
     router.push('/account');
@@ -65,6 +75,13 @@ export default function LoginClient() {
               className="w-full bg-[#17151f] border border-white/[0.08] rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition text-sm"
             />
           </div>
+          <HCaptcha
+            ref={captchaRef}
+            sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY!}
+            onVerify={token => setCaptchaToken(token)}
+            onExpire={() => setCaptchaToken('')}
+            theme="dark"
+          />
           <button
             type="submit"
             disabled={loading}
