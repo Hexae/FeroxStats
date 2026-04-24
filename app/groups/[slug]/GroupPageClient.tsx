@@ -217,6 +217,7 @@ export default function GroupPageClient({ slug }: { slug: string }) {
   const [kickTarget, setKickTarget] = useState<string | null>(null);
   const [settingRank, setSettingRank] = useState<string | null>(null);
   const [openRankDropdown, setOpenRankDropdown] = useState<string | null>(null);
+  const [openRankDropdownUpward, setOpenRankDropdownUpward] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -720,7 +721,7 @@ export default function GroupPageClient({ slug }: { slug: string }) {
       {tab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_270px] gap-5">
           {/* Members table */}
-          <div className="bg-[#1e1c2a] border border-white/[0.07] rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-[#1e1c2a] border border-white/[0.07] rounded-2xl overflow-visible shadow-xl">
             <div className="px-4 py-3 border-b border-white/[0.07] flex items-center justify-between">
               <span className="text-sm font-semibold text-slate-300">
                 Showing all <span className="text-white">{group.members.length}</span> member{group.members.length !== 1 ? 's' : ''} of {group.name}
@@ -1464,11 +1465,11 @@ export default function GroupPageClient({ slug }: { slug: string }) {
 
           {/* Click-away overlay to close rank dropdown */}
           {openRankDropdown && (
-            <div className="fixed inset-0 z-40" onClick={() => setOpenRankDropdown(null)} />
+            <div className="fixed inset-0 z-40" onClick={() => { setOpenRankDropdown(null); setOpenRankDropdownUpward(false); }} />
           )}
 
           {/* Member Management */}
-          <div className="bg-[#1e1c2a] border border-white/[0.07] rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-[#1e1c2a] border border-white/[0.07] rounded-2xl overflow-visible shadow-xl">
             <div className="px-5 py-4 border-b border-white/[0.07]">
               <h3 className="text-base font-bold text-white">Member Management</h3>
             </div>
@@ -1514,7 +1515,23 @@ export default function GroupPageClient({ slug }: { slug: string }) {
                           <div className="relative">
                             {/* Trigger button */}
                             <button
-                              onClick={() => setOpenRankDropdown(openRankDropdown === m.username ? null : m.username)}
+                              onClick={e => {
+                                const isClosing = openRankDropdown === m.username;
+                                if (isClosing) {
+                                  setOpenRankDropdown(null);
+                                  setOpenRankDropdownUpward(false);
+                                  return;
+                                }
+
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const estimatedMenuHeight = 272;
+                                const belowSpace = window.innerHeight - rect.bottom;
+                                const aboveSpace = rect.top;
+                                const shouldOpenUpward = belowSpace < estimatedMenuHeight && aboveSpace > belowSpace;
+
+                                setOpenRankDropdownUpward(shouldOpenUpward);
+                                setOpenRankDropdown(m.username);
+                              }}
                               disabled={settingRank === m.username}
                               className="flex items-center gap-1.5 text-xs bg-[#15131f] border border-white/10 rounded px-1.5 py-1 text-slate-300 disabled:opacity-50 hover:border-white/20 transition-colors max-w-[180px]"
                             >
@@ -1530,9 +1547,9 @@ export default function GroupPageClient({ slug }: { slug: string }) {
                             </button>
                             {/* Dropdown panel */}
                             {openRankDropdown === m.username && (
-                              <div className="absolute top-full left-0 z-50 mt-1 w-52 max-h-64 overflow-y-auto bg-[#15131f] border border-white/10 rounded-lg shadow-xl py-1">
+                              <div className={`absolute left-0 z-50 w-52 max-h-64 overflow-y-auto bg-[#15131f] border border-white/10 rounded-lg shadow-xl py-1 ${openRankDropdownUpward ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                                 <button
-                                  onClick={() => { void handleSetRank(m.username, null, null); setOpenRankDropdown(null); }}
+                                  onClick={() => { void handleSetRank(m.username, null, null); setOpenRankDropdown(null); setOpenRankDropdownUpward(false); }}
                                   className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-400 hover:bg-white/5 transition-colors"
                                 >
                                   <span className="w-3 h-3 shrink-0" />
@@ -1546,7 +1563,7 @@ export default function GroupPageClient({ slug }: { slug: string }) {
                                   return (
                                     <button
                                       key={slot}
-                                      onClick={() => { void handleSetRank(m.username, slot, slotIcon); setOpenRankDropdown(null); }}
+                                      onClick={() => { void handleSetRank(m.username, slot, slotIcon); setOpenRankDropdown(null); setOpenRankDropdownUpward(false); }}
                                       className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${isSelected ? 'text-white bg-white/10' : 'text-slate-300 hover:bg-white/5'}`}
                                     >
                                       {slotIcon ? (
