@@ -537,7 +537,10 @@ function OverviewTab({
       setMostTradedLoading(true);
       try {
         const res = await fetch(`/api/ge?tab=most-traded&range=${volumeRange}`, { cache: 'no-store' });
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (!cancelled) setRemoteTopVolume([]);
+          return;
+        }
         const data = await res.json();
         if (cancelled) return;
         const top = Array.isArray(data?.top)

@@ -100,15 +100,18 @@ export async function GET(request: NextRequest) {
       const supabase = serviceClient();
       const since = rangeStartIso(range);
       const pageSize = 1000;
-      const maxPages = range === 'ALL' ? 120 : 40;
 
-      const tradeRows: Array<{ item_name: string; quantity: number; source: string; type: string | null }> = [];
-      for (let page = 0; page < maxPages; page++) {
+      const volumeByItem: Record<string, number> = {};
+      let tradeRows = 0;
+      let consideredRows = 0;
+
+      for (let page = 0; ; page++) {
         const from = page * pageSize;
         const to = from + pageSize - 1;
         let tradeQuery = supabase
           .from('trade_history')
-          .select('item_name,quantity,source,type,traded_at')
+          .select('item_name,quantity,source,type')
+          .in('source', ['transaction', 'offer'])
           .order('traded_at', { ascending: false })
           .range(from, to);
         if (since) tradeQuery = tradeQuery.gte('traded_at', since);
@@ -116,61 +119,26 @@ export async function GET(request: NextRequest) {
         const { data, error } = await tradeQuery;
         if (error) throw new Error(error.message);
         const rows = data ?? [];
-        tradeRows.push(...rows);
-        if (rows.length < pageSize) break;
-      }
+        if (rows.length === 0) break;
 
-      const priceRows: Array<{ item_name: string }> = [];
-      for (let page = 0; page < maxPages; page++) {
-        const from = page * pageSize;
-        const to = from + pageSize - 1;
-        let priceQuery = supabase
-          .from('ge_price_history')
-          .select('item_name,sampled_at')
-          .order('sampled_at', { ascending: false })
-          .range(from, to);
-        if (since) priceQuery = priceQuery.gte('sampled_at', since);
+        tradeRows += rows.length;
 
-        const { data, error } = await priceQuery;
-        if (error) throw new Error(error.message);
-        const rows = data ?? [];
-        priceRows.push(...rows);
-        if (rows.length < pageSize) break;
-      }
+        for (const row of rows) {
+          const isTradeLike = row.source === 'transaction' || (row.source === 'offer' && row.type === 'SELL');
+          if (!isTradeLike) continue;
+          consideredRows += 1;
 
-      const volumeByItem: Record<string, number> = {};
-      for (const row of tradeRows ?? []) {
-        if (!row.item_name) continue;
-        const isValidTrade =
-          row.source === 'transaction' ||
-          (row.source === 'offer' && row.type === 'SELL');
-        if (!isValidTrade) continue;
-        const qty = Number(row.quantity) || 0;
-        if (qty <= 0) continue;
-        volumeByItem[row.item_name] = (volumeByItem[row.item_name] || 0) + qty;
-      }
-
-      // Read from ge_price_history too so overview most-traded is connected to both
-      // Supabase tables (same dual-source pattern as the item page).
-      const sampleCountByItem: Record<string, number> = {};
-      for (const row of priceRows ?? []) {
-        if (!row.item_name) continue;
-        sampleCountByItem[row.item_name] = (sampleCountByItem[row.item_name] || 0) + 1;
-      }
-
-      // Ensure tracked items that only have sampled history still appear as candidates.
-      for (const name of Object.keys(sampleCountByItem)) {
-        if (!(name in volumeByItem)) {
-          volumeByItem[name] = 0;
+          if (!row.item_name) continue;
+          const qty = Number(row.quantity) || 0;
+          if (qty <= 0) continue;
+          volumeByItem[row.item_name] = (volumeByItem[row.item_name] || 0) + qty;
         }
+
+        if (rows.length < pageSize) break;
       }
 
       const top = Object.entries(volumeByItem)
-        .sort((a, b) => {
-          const qtyDiff = b[1] - a[1];
-          if (qtyDiff !== 0) return qtyDiff;
-          return (sampleCountByItem[b[0]] || 0) - (sampleCountByItem[a[0]] || 0);
-        })
+        .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
         .map(([name, quantity]) => ({ name, quantity }));
 
@@ -178,8 +146,8 @@ export async function GET(request: NextRequest) {
         range,
         top,
         sourceCounts: {
-          tradeRows: tradeRows.length,
-          priceRows: priceRows.length,
+          scannedRows: tradeRows,
+          consideredRows,
         },
       });
     }
