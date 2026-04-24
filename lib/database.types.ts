@@ -14,6 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
+      ge_price_history: {
+        Row: {
+          id: number
+          item_id: number
+          item_name: string
+          price: number
+          sampled_at: string
+        }
+        Insert: {
+          id?: number
+          item_id: number
+          item_name: string
+          price: number
+          sampled_at?: string
+        }
+        Update: {
+          id?: number
+          item_id?: number
+          item_name?: string
+          price?: number
+          sampled_at?: string
+        }
+        Relationships: []
+      }
+      player_milestones: {
+        Row: {
+          id: string
+          player_username: string
+          skill_id: number
+          skill_name: string
+          old_level: number
+          new_level: number
+          xp: number
+          achieved_at: string
+        }
+        Insert: {
+          id?: string
+          player_username: string
+          skill_id: number
+          skill_name: string
+          old_level: number
+          new_level: number
+          xp: number
+          achieved_at?: string
+        }
+        Update: {
+          id?: string
+          player_username?: string
+          skill_id?: number
+          skill_name?: string
+          old_level?: number
+          new_level?: number
+          xp?: number
+          achieved_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_milestones_player_username_fkey"
+            columns: ["player_username"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["username"]
+          },
+        ]
+      }
+      tracker_heartbeat: {
+        Row: {
+          service: string
+          status: string
+          last_seen: string
+          metadata: Json | null
+        }
+        Insert: {
+          service: string
+          status?: string
+          last_seen: string
+          metadata?: Json | null
+        }
+        Update: {
+          service?: string
+          status?: string
+          last_seen?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       competition_standings: {
         Row: {
           competition_id: string
