@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      competition_standings: {
+        Row: {
+          competition_id: string
+          username: string
+          rank: number
+          xp_gained: number
+          start_xp: number
+          end_xp: number
+          updated_at: string
+        }
+        Insert: {
+          competition_id: string
+          username: string
+          rank?: number
+          xp_gained?: number
+          start_xp?: number
+          end_xp?: number
+          updated_at: string
+        }
+        Update: {
+          competition_id?: string
+          username?: string
+          rank?: number
+          xp_gained?: number
+          start_xp?: number
+          end_xp?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_standings_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "group_competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_standings_username_fkey"
+            columns: ["username"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["username"]
+          },
+        ]
+      }
       group_competitions: {
         Row: {
           created_at: string | null
