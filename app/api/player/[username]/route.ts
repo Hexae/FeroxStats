@@ -80,18 +80,20 @@ export async function GET(
   let game_mode = 'regular';
   let is_claimed = false;
   let last_fetched_at: string | null = null;
+  let country: string | null = null;
   let screenshots: Array<{ id: string; public_url: string; created_at: string }> = [];
   try {
     const supabase2 = await createClient();
     const { data: playerRow } = await supabase2
       .from('players')
-      .select('game_mode, claimed_by, last_fetched_at')
+      .select('game_mode, claimed_by, last_fetched_at, country')
       .eq('username', decoded.toLowerCase())
       .single();
     if (playerRow) {
       game_mode = playerRow.game_mode ?? 'regular';
       is_claimed = !!playerRow.claimed_by;
       last_fetched_at = playerRow.last_fetched_at ?? null;
+      country = (playerRow as { country?: string | null }).country ?? null;
     }
     const { data: screenshotRows } = await supabase2
       .from('player_screenshots')
@@ -101,5 +103,5 @@ export async function GET(
     screenshots = screenshotRows ?? [];
   } catch { /* ignore */ }
 
-  return NextResponse.json({ ...hiscoreData, game_mode, is_claimed, last_fetched_at, screenshots });
+  return NextResponse.json({ ...hiscoreData, game_mode, is_claimed, last_fetched_at, country, screenshots });
 }

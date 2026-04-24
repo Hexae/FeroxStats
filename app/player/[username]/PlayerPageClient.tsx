@@ -44,6 +44,7 @@ interface PlayerApiResponse extends FeroxHiscoreResponse {
   game_mode: string;
   is_claimed: boolean;
   last_fetched_at?: string | null;
+  country?: string | null;
   screenshots?: Array<{ id: string; public_url: string; created_at: string }>;
 }
 
@@ -101,6 +102,16 @@ interface AchievementRecord {
   skillId?: number;
   completedAt: string;
   isLegacy: boolean;
+}
+
+interface MilestoneRow {
+  id: string;
+  skill_id: number;
+  skill_name: string;
+  old_level: number;
+  new_level: number;
+  xp: number;
+  achieved_at: string;
 }
 
 interface NearestGoal {
@@ -873,6 +884,12 @@ function AchievementProgress({ skills, username }: { skills: SkillData[]; userna
     fetcher
   );
 
+  // Fetch tracker-recorded level-ups
+  const { data: milestonesData, isLoading: milestonesLoading } = useSWR<{ milestones: MilestoneRow[] }>(
+    `/api/player/${encodeURIComponent(username)}/milestones?limit=20`,
+    fetcher
+  );
+
   const nearestGoals = useMemo(() => computeNearestGoals(skills), [skills]);
 
   const recentAchievements = useMemo(() => {
@@ -1005,12 +1022,60 @@ function AchievementProgress({ skills, username }: { skills: SkillData[]; userna
           )}
         </div>
 
+        {/* Recent Level-Ups (from tracker) */}
+        <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03]">
+          <div className="border-b border-white/5 px-4 py-3">
+            <h3 className="text-sm font-semibold text-slate-200">Recent level-ups</h3>
+          </div>
+          {milestonesLoading ? (
+            <div className="divide-y divide-white/[0.04] py-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="mx-4 my-2 h-10 animate-pulse rounded-lg bg-white/5" style={{ animationDelay: `${i * 60}ms` }} />
+              ))}
+            </div>
+          ) : !milestonesData?.milestones?.length ? (
+            <p className="px-4 py-6 text-center text-xs text-slate-500">No level-ups recorded yet.</p>
+          ) : (
+            <div className="divide-y divide-white/[0.04]">
+              {milestonesData.milestones.map((m) => {
+                const skillMeta = SKILLS.find((s) => s.id === m.skill_id);
+                return (
+                  <div key={m.id} className="flex items-center gap-3 px-4 py-3 transition hover:bg-white/[0.03]">
+                    {skillMeta ? (
+                      <div className="relative h-6 w-6 shrink-0">
+                        <Image src={getSkillIcon(skillMeta.icon)} alt={m.skill_name} fill className="object-contain" unoptimized />
+                      </div>
+                    ) : (
+                      <div className="h-6 w-6 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-200">
+                        {m.skill_name}
+                        <span className="ml-1.5 text-slate-500 font-normal text-xs">
+                          {m.old_level} → <span className={m.new_level >= 99 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-semibold'}>{m.new_level}</span>
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        {new Date(m.achieved_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {' · '}
+                        {formatXp(m.xp)} xp
+                      </p>
+                    </div>
+                    {m.new_level >= 99 && (
+                      <span className="shrink-0 text-[11px] font-bold text-amber-400 border border-amber-500/30 bg-amber-500/10 rounded-full px-2 py-0.5">99</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Nearest skill achievements */}
         <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03]">
           <div className="border-b border-white/5 px-4 py-3">
             <h3 className="text-sm font-semibold text-slate-200">Nearest skill achievements</h3>
-          </div>
-          {nearestGoals.length === 0 ? (
+          </div>          {nearestGoals.length === 0 ? (
             <p className="px-4 py-6 text-center text-xs text-slate-500">All goals completed!</p>
           ) : (
             <div className="divide-y divide-white/[0.04]">
@@ -1563,10 +1628,23 @@ export default function PlayerPageClient({ username, isOwner }: { username: stri
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-blue-900/20 via-transparent to-purple-900/20" />
         <div className="relative z-10 flex items-center gap-4">
           {/* Avatar */}
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-black/60 shadow-lg">
-            <span className="bg-gradient-to-br from-amber-400 via-sky-400 to-purple-500 bg-clip-text text-xl font-black text-transparent">
-              {displayName.slice(0, 2).toUpperCase()}
-            </span>
+          <div className="relative shrink-0">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-black/60 shadow-lg">
+              <span className="bg-gradient-to-br from-amber-400 via-sky-400 to-purple-500 bg-clip-text text-xl font-black text-transparent">
+                {displayName.slice(0, 2).toUpperCase()}
+              </span>
+            </div>
+            {data.country && (
+              <img
+                src={`https://flagcdn.com/w20/${data.country.toLowerCase()}.png`}
+                srcSet={`https://flagcdn.com/w40/${data.country.toLowerCase()}.png 2x`}
+                width={16}
+                height={12}
+                alt={data.country}
+                title={data.country}
+                className="absolute bottom-0.5 right-0.5 rounded-sm object-cover shadow shadow-black/60 ring-1 ring-black/50"
+              />
+            )}
           </div>
           {/* Name + badges */}
           <div className="min-w-0 flex-1">

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
-import { GAME_MODES, getGameMode, GameModeKey, formatNumber } from '@/lib/osrs';
+import { GAME_MODES, getGameMode, GameModeKey, formatNumber, COUNTRIES } from '@/lib/osrs';
 
 interface Props {
   user: { id: string; email: string };
@@ -16,6 +16,7 @@ interface Props {
     total_xp: number;
     overall_rank: number;
     claimed_at: string | null;
+    country?: string | null;
   } | null;
   isAdmin: boolean;
 }
@@ -26,6 +27,9 @@ export default function AccountClient({ user, claimedPlayer, isAdmin }: Props) {
   const [selectedMode, setSelectedMode] = useState<GameModeKey>(
     (claimedPlayer?.game_mode as GameModeKey) ?? 'regular'
   );
+  const [selectedCountry, setSelectedCountry] = useState<string>(claimedPlayer?.country ?? '');
+  const [countryLoading, setCountryLoading] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
   const [claimLoading, setClaimLoading] = useState(false);
   const [modeLoading, setModeLoading] = useState(false);
   const [unclaimLoading, setUnclaimLoading] = useState(false);
@@ -72,6 +76,22 @@ export default function AccountClient({ user, claimedPlayer, isAdmin }: Props) {
     setUnclaimLoading(false);
     if (!res.ok) { setMsg({ type: 'err', text: json.error }); return; }
     setMsg({ type: 'ok', text: 'Profile unlinked.' });
+    router.refresh();
+  }
+
+  async function handleCountryChange(code: string) {
+    setSelectedCountry(code);
+    setMsg(null);
+    setCountryLoading(true);
+    const res = await fetch('/api/country', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ country: code || null }),
+    });
+    const json = await res.json();
+    setCountryLoading(false);
+    if (!res.ok) { setMsg({ type: 'err', text: json.error }); return; }
+    setMsg({ type: 'ok', text: code ? 'Country updated.' : 'Country removed.' });
     router.refresh();
   }
 
@@ -176,6 +196,77 @@ export default function AccountClient({ user, claimedPlayer, isAdmin }: Props) {
             <p className="text-xs text-slate-600 mt-2">
               {gm.combatXp}x Combat · {gm.skillingXp}x Skilling
             </p>
+          </div>
+
+          {/* Country selector */}
+          <div className="mt-5">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+              Country {countryLoading && <span className="text-slate-600">(saving…)</span>}
+            </p>
+            <div className="flex items-center gap-3">
+              {selectedCountry && (
+                <img
+                  src={`https://flagcdn.com/w20/${selectedCountry.toLowerCase()}.png`}
+                  srcSet={`https://flagcdn.com/w40/${selectedCountry.toLowerCase()}.png 2x`}
+                  width={20}
+                  height={15}
+                  alt={COUNTRIES.find(c => c.code === selectedCountry)?.name ?? selectedCountry}
+                  title={COUNTRIES.find(c => c.code === selectedCountry)?.name}
+                  className="rounded-sm object-cover shrink-0"
+                />
+              )}
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={countrySearch}
+                  onChange={e => setCountrySearch(e.target.value)}
+                  placeholder={selectedCountry ? (COUNTRIES.find(c => c.code === selectedCountry)?.name ?? 'Search country…') : 'Search country…'}
+                  className="w-full bg-[#17151f] border border-white/[0.08] rounded-lg px-3 py-2 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition text-sm"
+                />
+                {countrySearch && (
+                  <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto bg-[#1e1c2a] border border-white/[0.10] rounded-lg shadow-xl">
+                    {COUNTRIES.filter(c =>
+                      c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+                      c.code.toLowerCase().includes(countrySearch.toLowerCase())
+                    ).map(c => (
+                      <button
+                        key={c.code}
+                        type="button"
+                        disabled={countryLoading}
+                        onClick={() => { handleCountryChange(c.code); setCountrySearch(''); }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-white/[0.06] text-left transition-colors"
+                      >
+                        <img
+                          src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`}
+                          srcSet={`https://flagcdn.com/w40/${c.code.toLowerCase()}.png 2x`}
+                          width={20}
+                          height={15}
+                          alt={c.name}
+                          className="rounded-sm object-cover shrink-0"
+                        />
+                        <span>{c.name}</span>
+                      </button>
+                    ))}
+                    {COUNTRIES.filter(c =>
+                      c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+                      c.code.toLowerCase().includes(countrySearch.toLowerCase())
+                    ).length === 0 && (
+                      <p className="px-3 py-2 text-sm text-slate-500">No results</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              {selectedCountry && (
+                <button
+                  type="button"
+                  disabled={countryLoading}
+                  onClick={() => { handleCountryChange(''); setCountrySearch(''); }}
+                  className="text-xs text-slate-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
           </div>
         </div>
       ) : (

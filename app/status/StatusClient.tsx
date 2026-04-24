@@ -44,6 +44,7 @@ const SERVICE_ICONS: Record<string, string> = {
   'Website':        '🌐',
   'Database':       '🗄️',
   'Player Updates': '🔄',
+  'GE Tracker':     '📈',
   'Ferox.ps':       '⚔️',
 };
 

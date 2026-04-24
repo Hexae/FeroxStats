@@ -27,6 +27,13 @@ interface HistoryRow {
   traded_at: string;
 }
 
+interface PriceHistoryRow {
+  id: number;
+  item_id: number;
+  price: number;
+  sampled_at: string;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 function formatGp(n: number): string {
@@ -70,6 +77,7 @@ export default function ItemPageClient({ name }: { name: string }) {
   const router = useRouter();
 
   const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [range,   setRange]   = useState<Range>('All');
 
@@ -78,11 +86,17 @@ export default function ItemPageClient({ name }: { name: string }) {
     async function load() {
       setLoading(true);
       try {
-        const r = await fetch(`/api/ge/item?name=${encodeURIComponent(name)}&limit=500`);
-        const d = await r.json();
-        if (!cancelled) setHistory(d.history ?? []);
+        const [tradeRes, priceRes] = await Promise.all([
+          fetch(`/api/ge/item?name=${encodeURIComponent(name)}&limit=500`),
+          fetch(`/api/ge/item/price-history?name=${encodeURIComponent(name)}&limit=500`),
+        ]);
+        const [tradeData, priceData] = await Promise.all([tradeRes.json(), priceRes.json()]);
+        if (!cancelled) {
+          setHistory(tradeData.history ?? []);
+          setPriceHistory(priceData.prices ?? []);
+        }
       } catch {
-        if (!cancelled) setHistory([]);
+        if (!cancelled) { setHistory([]); setPriceHistory([]); }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -96,6 +110,34 @@ export default function ItemPageClient({ name }: { name: string }) {
   const filtered = start
     ? history.filter(h => new Date(h.traded_at) >= start)
     : history;
+
+  // Tracker price history filtered by the same range
+  const filteredPrices = start
+    ? priceHistory.filter(p => new Date(p.sampled_at) >= start)
+    : priceHistory;
+
+  // Chart data for tracker prices — sampled every 5 min, show as time labels
+  const trackerChartLabels = filteredPrices.map(p =>
+    new Date(p.sampled_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  );
+  const trackerChartPrices = filteredPrices.map(p => p.price);
+
+  const trackerChartData = {
+    labels: trackerChartLabels,
+    datasets: [
+      {
+        label: 'Median offer price (gp)',
+        data: trackerChartPrices,
+        borderColor: '#818cf8',
+        backgroundColor: 'rgba(129,140,248,0.08)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: trackerChartLabels.length > 60 ? 0 : 2,
+        pointHoverRadius: 5,
+        borderWidth: 2,
+      },
+    ],
+  };
 
   // Stats
   const prices   = filtered.map(h => h.price_each).filter(p => p > 0);
@@ -239,6 +281,41 @@ export default function ItemPageClient({ name }: { name: string }) {
                 <div className="text-[10px] uppercase tracking-widest text-amber-600 mb-1">Sell Volume</div>
                 <div className="text-base font-bold text-amber-400 tabular-nums">{sellVol.toLocaleString()} items</div>
               </div>
+            </div>
+          )}
+
+          {/* Tracker sampled price chart */}
+          {filteredPrices.length >= 2 && (
+            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.07] p-4 mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <span className="text-xs uppercase tracking-widest text-slate-500">Tracker Price History</span>
+                  <p className="text-[10px] text-slate-600 mt-0.5">Median offer price sampled every ~5 min</p>
+                </div>
+                <span className="text-[10px] text-indigo-400 border border-indigo-500/20 bg-indigo-500/10 rounded-full px-2 py-0.5 font-medium">
+                  {filteredPrices.length.toLocaleString()} samples
+                </span>
+              </div>
+              <div className="h-52">
+                <Line data={trackerChartData} options={chartOptions as Parameters<typeof Line>[0]['options']} />
+              </div>
+              {filteredPrices.length >= 2 && (() => {
+                const first = filteredPrices[0].price;
+                const last  = filteredPrices[filteredPrices.length - 1].price;
+                const delta = last - first;
+                const pct   = first > 0 ? ((delta / first) * 100).toFixed(1) : null;
+                return (
+                  <div className="mt-2 flex gap-3 text-[11px] text-slate-500">
+                    <span>Open: <span className="text-slate-300 font-medium">{formatGp(first)}</span></span>
+                    <span>Current: <span className="text-slate-300 font-medium">{formatGp(last)}</span></span>
+                    {pct !== null && (
+                      <span className={delta >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                        {delta >= 0 ? '+' : ''}{pct}%
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
 

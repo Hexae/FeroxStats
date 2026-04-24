@@ -14,7 +14,7 @@ export default async function AccountPage() {
   // Fetch claimed player (if any)
   const { data: player } = await supabase
     .from('players')
-    .select('username, display_name, game_mode, total_level, total_xp, overall_rank, claimed_at')
+    .select('username, display_name, game_mode, total_level, total_xp, overall_rank, claimed_at, country')
     .eq('claimed_by', user.id)
     .single();
 

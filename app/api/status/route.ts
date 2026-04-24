@@ -35,6 +35,43 @@ async function checkDatabase(): Promise<ServiceResult> {
 async function checkPlayerUpdates(): Promise<ServiceResult> {
   try {
     const supabase = serviceClient();
+
+    // Prefer the tracker_heartbeat table if the tracker is running.
+    // Fall back to scanning players.last_fetched_at when the tracker hasn't
+    // written a heartbeat yet (e.g. first deploy).
+    const { data: hb } = await supabase
+      .from('tracker_heartbeat')
+      .select('status, last_seen, metadata')
+      .eq('service', 'players')
+      .maybeSingle();
+
+    if (hb?.last_seen) {
+      const ageMs = Date.now() - new Date(hb.last_seen).getTime();
+      const ageMins = Math.floor(ageMs / 60000);
+      const ageHrs = Math.floor(ageMins / 60);
+
+      // Tracker heartbeat is written every 60 s; >30 min without one = degraded.
+      let status: ServiceStatus;
+      let description: string;
+
+      if (hb.status !== 'ok') {
+        status = 'degraded';
+        description = `Tracker reported: ${hb.status} (${ageMins}m ago)`;
+      } else if (ageMins < 30) {
+        status = 'operational';
+        description = `Tracker running · last seen ${ageMins}m ago`;
+      } else if (ageHrs < 6) {
+        status = 'degraded';
+        description = `Tracker stalled · last seen ${ageHrs}h ago`;
+      } else {
+        status = 'outage';
+        description = `Tracker offline · last seen ${ageHrs}h ago`;
+      }
+
+      return { name: 'Player Updates', status, latency: null, description };
+    }
+
+    // Fallback: check players table
     const { data, error } = await supabase
       .from('players')
       .select('last_fetched_at')
@@ -92,10 +129,45 @@ async function checkFeroxApi(): Promise<ServiceResult> {
   }
 }
 
+async function checkGETracker(): Promise<ServiceResult> {
+  try {
+    const supabase = serviceClient();
+    const { data: hb } = await supabase
+      .from('tracker_heartbeat')
+      .select('status, last_seen')
+      .eq('service', 'ge')
+      .maybeSingle();
+
+    if (!hb?.last_seen) {
+      return { name: 'GE Tracker', status: 'degraded', latency: null, description: 'No heartbeat yet' };
+    }
+
+    const ageMs = Date.now() - new Date(hb.last_seen).getTime();
+    const ageMins = Math.floor(ageMs / 60000);
+
+    if (hb.status !== 'ok') {
+      return { name: 'GE Tracker', status: 'degraded', latency: null, description: `Tracker reported: ${hb.status}` };
+    }
+    if (ageMins < 30) {
+      return { name: 'GE Tracker', status: 'operational', latency: null, description: `Last run ${ageMins}m ago` };
+    }
+    const ageHrs = Math.floor(ageMins / 60);
+    return {
+      name: 'GE Tracker',
+      status: ageHrs < 6 ? 'degraded' : 'outage',
+      latency: null,
+      description: `Last run ${ageHrs}h ago`,
+    };
+  } catch (e) {
+    return { name: 'GE Tracker', status: 'outage', latency: null, description: String(e) };
+  }
+}
+
 export async function GET() {
-  const [db, updates, ferox] = await Promise.all([
+  const [db, updates, ge, ferox] = await Promise.all([
     checkDatabase(),
     checkPlayerUpdates(),
+    checkGETracker(),
     checkFeroxApi(),
   ]);
 
@@ -106,7 +178,7 @@ export async function GET() {
     description: 'Running normally',
   };
 
-  const services = [website, db, updates, ferox];
+  const services = [website, db, updates, ge, ferox];
 
   const overall: ServiceStatus = services.some((s) => s.status === 'outage')
     ? 'outage'
