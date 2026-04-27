@@ -4,6 +4,7 @@ import { handleMembers } from './notify/members.js';
 import { handleCompetitions } from './notify/competitions.js';
 import { handleAchievements } from './notify/achievements.js';
 import { handleDeaths } from './notify/deaths.js';
+import { handleUpdates } from './notify/updates.js';
 
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS ?? '60000', 10);
 
@@ -20,6 +21,7 @@ async function poll(): Promise<void> {
       state = await handleCompetitions({ ...group, bot_state: state });
       state = await handleAchievements({ ...group, bot_state: state });
       state = await handleDeaths({ ...group, bot_state: state });
+      state = await handleUpdates({ ...group, bot_state: state });
 
       await saveBotState(group.id, state);
     } catch (err) {

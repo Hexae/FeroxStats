@@ -43,6 +43,8 @@ export default function Footer() {
                 { href: '/', label: 'Player Lookup' },
                 { href: '/hiscores', label: 'Hiscores' },
                 { href: '/leaderboard', label: 'Leaderboard' },
+                { href: '/updates', label: 'Recent Updates' },
+                { href: '/api-docs', label: 'API Docs' },
               ].map(({ href, label }) => (
                 <li key={href}>
                   <Link

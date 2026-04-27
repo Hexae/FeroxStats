@@ -316,7 +316,10 @@ export default function Navbar() {
           <Link href="/ge" className="px-3 py-1.5 rounded-md text-sm font-medium text-[hsl(220_20%_64%)] hover:text-white hover:bg-[hsl(220_23%_15%)] transition-colors">
             G.E.
           </Link>
-          <a
+          <Link href="/updates" className="px-3 py-1.5 rounded-md text-sm font-medium text-[hsl(220_20%_64%)] hover:text-white hover:bg-[hsl(220_23%_15%)] transition-colors">
+            Updates
+          </Link>
+          <a 
             href="https://ferox.ps"
             target="_blank"
             rel="noopener noreferrer"
@@ -428,6 +431,8 @@ export default function Navbar() {
             <Link href="/top-gains" onClick={() => setMenuOpen(false)} className="px-4 py-2.5 rounded-md text-sm font-medium text-[hsl(220_20%_64%)] hover:text-white hover:bg-[hsl(220_23%_15%)] transition-colors">Top Gains</Link>
             <MobileGroupsSection onClose={() => setMenuOpen(false)} />
             <Link href="/ge" onClick={() => setMenuOpen(false)} className="px-4 py-2.5 rounded-md text-sm font-medium text-[hsl(220_20%_64%)] hover:text-white hover:bg-[hsl(220_23%_15%)] transition-colors">G.E.</Link>
+            <Link href="/updates" onClick={() => setMenuOpen(false)} className="px-4 py-2.5 rounded-md text-sm font-medium text-[hsl(220_20%_64%)] hover:text-white hover:bg-[hsl(220_23%_15%)] transition-colors">Updates</Link>
+            <Link href="/api-docs" onClick={() => setMenuOpen(false)} className="px-4 py-2.5 rounded-md text-sm font-medium text-[hsl(220_20%_64%)] hover:text-white hover:bg-[hsl(220_23%_15%)] transition-colors">API</Link>
             {user ? (
               <Link href="/account" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium text-[hsl(220_20%_64%)] hover:text-white hover:bg-[hsl(220_23%_15%)] transition-colors">
                 <div className="w-5 h-5 rounded-full bg-blue-700 flex items-center justify-center text-white text-xs font-bold">{initials}</div>

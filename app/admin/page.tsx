@@ -45,11 +45,17 @@ export default async function AdminPage() {
     members_count: (g.group_members as unknown as { count: number }[])?.[0]?.count ?? 0,
   }));
 
+  const { data: updates } = await supabase
+    .from('game_updates')
+    .select('id, slug, title, summary, category, image, markdown, published_at, is_published, created_at')
+    .order('published_at', { ascending: false });
+
   return (
     <AdminClient
       players={players ?? []}
       userProfiles={userProfiles ?? []}
       groups={groups}
+      updates={updates ?? []}
     />
   );
 }

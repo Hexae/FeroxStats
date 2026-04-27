@@ -25,6 +25,7 @@ export interface BotState {
   last_event_at?: string;           // ISO – cursor for group_events
   last_achievement_check_at?: string; // ISO – cursor for snapshot-based 99 detection
   comp_notifications?: Record<string, string[]>; // compId -> ['started','starting_soon',...]
+  last_update_slug?: string;
 }
 
 export interface GroupEvent {

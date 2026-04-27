@@ -303,6 +303,48 @@ export type Database = {
           },
         ]
       }
+      game_updates: {
+        Row: {
+          category: string
+          created_at: string
+          id: number
+          image: string
+          is_published: boolean
+          markdown: string
+          published_at: string
+          slug: string
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: never
+          image?: string
+          is_published?: boolean
+          markdown: string
+          published_at: string
+          slug: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: never
+          image?: string
+          is_published?: boolean
+          markdown?: string
+          published_at?: string
+          slug?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       groups: {
         Row: {
           banner_url: string | null
