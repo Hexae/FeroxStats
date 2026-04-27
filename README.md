@@ -1,42 +1,46 @@
 # FeroxStats
 
-A comprehensive analytics and hiscores platform for the [Ferox.ps](https://ferox.ps) Old School RuneScape private server.
+A full-featured analytics, leaderboard, and content platform for the [Ferox.ps](https://ferox.ps) Old School RuneScape private server.
 
 ## Features
 
-- **Live player stats and hiscores** — track skill progress and server-wide rankings, updated automatically from the Ferox API
-- **Grand Exchange analytics** — live trading data, item prices, and transaction history from the in-game GE
-- **Snapshot history** — every player lookup saves a snapshot, building a progression timeline
-- **Competitions** — create and track group XP competitions with live leaderboards
-- **Groups** — clans can manage members, set ranks, and receive Discord notifications via the companion bot
-- **Player comparison** — compare up to 5 players side-by-side across all skills
-- **Mobile-friendly UI** — fully responsive design with instant player lookup and data visualizations
+- Live player stats and hiscores, synced from the Ferox API
+- Grand Exchange analytics, trade history, and price history
+- Snapshot-based progression tracking and top gains
+- Group management, join requests, and group competitions
+- Side-by-side player comparison
+- Authenticated profile features (claim, screenshots, settings)
+- Admin panel for moderation and game update publishing
+- Markdown-powered updates hub with archive, OG images, JSON feed, and RSS feed
+- Companion Discord bot for group events, achievements, deaths, competitions, and new updates
 
 > This project is not affiliated with Jagex Ltd or the official Old School RuneScape game.
 
 ---
 
-## Tech stack
+## Tech Stack
 
 | Layer | Technology |
 | ----- | ---------- |
-| Framework | [Next.js](https://nextjs.org) (App Router) |
+| Framework | [Next.js](https://nextjs.org) (App Router, v16) |
+| UI | React 19 + Tailwind CSS v4 |
 | Database / Auth | [Supabase](https://supabase.com) (Postgres + Auth + RLS) |
-| Styling | [Tailwind CSS v4](https://tailwindcss.com) |
-| Charts | [Chart.js](https://www.chartjs.org) via [react-chartjs-2](https://react-chartjs-2.js.org) |
+| Charts | [Chart.js](https://www.chartjs.org) + [react-chartjs-2](https://react-chartjs-2.js.org) |
 | Data fetching | [SWR](https://swr.vercel.app) |
-| Discord bot | Node.js + Supabase JS (no discord.js) |
+| Markdown | [react-markdown](https://github.com/remarkjs/react-markdown) + [remark-gfm](https://github.com/remarkjs/remark-gfm) |
+| Discord bot | Node.js + Supabase JS |
 
 ---
 
-## Getting started
+## Getting Started
 
 ### Prerequisites
 
 - Node.js 20+
-- A [Supabase](https://supabase.com) project (free tier is sufficient for development)
+- npm
+- A Supabase project
 
-### 1. Clone and install
+### 1. Clone and install dependencies
 
 ```bash
 git clone https://github.com/your-username/feroxstats.git
@@ -44,70 +48,106 @@ cd feroxstats
 npm install
 ```
 
-### 2. Configure environment variables
+### 2. Configure web app environment
 
 ```bash
 cp .env.example .env.local
 ```
 
-Open `.env.local` and fill in your values:
+Fill in `.env.local`:
 
-| Variable | Where to find it |
-| -------- | ---------------- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Dashboard ? Project Settings ? API |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard ? Project Settings ? API |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard ? Project Settings ? API (secret) |
-| `CRON_SECRET` | Generate with `openssl rand -base64 32` |
-| `NEXT_PUBLIC_FEROX_API_BASE` | Optional — defaults to `https://ferox.ps/api` |
+| Variable | Required | Notes |
+| -------- | -------- | ----- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase Project Settings -> API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase Project Settings -> API |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only secret key |
+| `CRON_SECRET` | Yes | Bearer secret for `/api/cron/update-players` |
+| `RESEND_API_KEY` | Yes (for email) | Used by Supabase SMTP setup with Resend |
+| `NEXT_PUBLIC_HCAPTCHA_SITE_KEY` | Yes (for auth forms) | hCaptcha site key |
+| `NEXT_PUBLIC_FEROX_API_BASE` | Optional | Defaults to `https://ferox.ps/api` |
+| `NEXT_PUBLIC_SITE_URL` | Optional | Used for absolute feed URLs and metadata |
 
-### 3. Set up the database
+### 3. Apply database migrations
 
-Apply the schema migrations from `bot/supabase/migration.sql` via the Supabase SQL editor or the Supabase CLI:
+Migrations live in `supabase/migrations/`.
+
+If you use Supabase CLI:
 
 ```bash
 npx supabase db push
 ```
 
-### 4. Run the development server
+If CLI is unavailable, run migration SQL files manually in Supabase SQL Editor (in order):
+
+1. `supabase/migrations/20260423_tracker_tables.sql`
+2. `supabase/migrations/202604270001_game_updates.sql`
+3. `supabase/migrations/202604270002_seed_game_updates.sql`
+
+### 4. Start the web app
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the app.
+Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Project structure
+## Bot Setup (Optional)
 
-```text
-app/              # Next.js App Router pages and API routes
-  api/            # REST API endpoints
-  auth/           # Login, register, and auth callback pages
-  player/         # Per-player stats pages
-  groups/         # Group management pages
-  ...
-bot/              # Discord notification bot (standalone Node.js process)
-  src/
-    db.ts         # Supabase helpers
-    discord.ts    # Webhook helpers
-    notify/       # Event handlers (members, competitions, achievements, deaths)
-components/       # Shared React components (Navbar, Footer, etc.)
-lib/              # Shared server-side utilities
-  osrs.ts         # OSRS game data and Ferox API client
-  api-utils.ts    # Rate limiting, validation helpers
-  admin-auth.ts   # Admin authentication helper for /api/admin/* routes
-  supabase*.ts    # Supabase client factories
-public/           # Static assets (rank icons)
+```bash
+cd bot
+cp .env.example .env
+npm install
+npm run dev
+```
+
+Bot environment variables:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SITE_URL`
+- `POLL_INTERVAL_MS` (optional, defaults to 60000)
+
+Build and run bot in production mode:
+
+```bash
+cd bot
+npm run build
+npm start
 ```
 
 ---
 
-## Cron job
+## Updates Platform
 
-The `/api/cron/update-players` endpoint refreshes all player stats.
-Trigger it on a schedule (e.g. Vercel Cron, GitHub Actions, or an external
-scheduler) with:
+Game updates are now database-backed (`public.game_updates`) with admin CRUD and public feeds.
+
+- Admin CRUD API: `app/api/admin/updates/route.ts`
+- Public JSON feed: `GET /api/updates?limit=20`
+- Public RSS feed: `GET /api/updates/feed`
+- Dynamic Open Graph image: `/updates/[slug]/opengraph-image`
+- Web UI: `/updates` and `/updates/archived`
+
+The Discord bot also announces newly published updates by polling `/api/updates`.
+
+---
+
+## API Docs
+
+Interactive API reference is available at:
+
+- `/api-docs`
+
+This documents public, authenticated, admin, and internal endpoints used by the app.
+
+---
+
+## Cron Job
+
+The internal endpoint `/api/cron/update-players` refreshes player snapshots and summary fields.
+
+Trigger using:
 
 ```text
 GET /api/cron/update-players
@@ -116,18 +156,20 @@ Authorization: Bearer <CRON_SECRET>
 
 ---
 
-## Discord bot
+## Project Structure
 
-The bot polls Supabase every 60 seconds and sends Discord webhook notifications
-for group events (member joins/leaves, competition updates, level-up
-achievements, deaths).
-
-```bash
-cd bot
-cp .env.example .env
-# fill in SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SITE_URL
-npm install
-npm start
+```text
+app/                  Next.js App Router pages and route handlers
+  api/                API endpoints (players, groups, GE, cron, updates, admin)
+  api-docs/           Interactive API documentation UI
+  updates/            Updates listing, detail pages, archive, social images
+bot/                  Standalone Discord notifier service
+  src/notify/         Notification handlers (members, competitions, achievements, deaths, updates)
+components/           Shared React UI components
+lib/                  Shared server/client utilities and typed data services
+  updates-service.ts  Canonical updates data layer (Supabase + fallback)
+supabase/migrations/  SQL schema and data migrations
+scripts/              Utility scripts (including update seed migration generator)
 ```
 
 ---
