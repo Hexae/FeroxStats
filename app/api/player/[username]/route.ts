@@ -81,12 +81,13 @@ export async function GET(
   let is_claimed = false;
   let last_fetched_at: string | null = null;
   let country: string | null = null;
+  let cover_screenshot_id: string | null = null;
   let screenshots: Array<{ id: string; public_url: string; created_at: string }> = [];
   try {
     const supabase2 = await createClient();
     const { data: playerRow } = await supabase2
       .from('players')
-      .select('game_mode, claimed_by, last_fetched_at, country')
+      .select('game_mode, claimed_by, last_fetched_at, country, cover_screenshot_id')
       .eq('username', decoded.toLowerCase())
       .single();
     if (playerRow) {
@@ -94,14 +95,24 @@ export async function GET(
       is_claimed = !!playerRow.claimed_by;
       last_fetched_at = playerRow.last_fetched_at ?? null;
       country = (playerRow as { country?: string | null }).country ?? null;
+      cover_screenshot_id = (playerRow as { cover_screenshot_id?: string | null }).cover_screenshot_id ?? null;
     }
     const { data: screenshotRows } = await supabase2
       .from('player_screenshots')
-      .select('id, public_url, created_at')
+      .select('id, public_url, created_at, sort_order')
       .eq('player_username', decoded.toLowerCase())
+      .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
     screenshots = screenshotRows ?? [];
   } catch { /* ignore */ }
 
-  return NextResponse.json({ ...hiscoreData, game_mode, is_claimed, last_fetched_at, country, screenshots });
+  return NextResponse.json({
+    ...hiscoreData,
+    game_mode,
+    is_claimed,
+    last_fetched_at,
+    country,
+    cover_screenshot_id,
+    screenshots,
+  });
 }

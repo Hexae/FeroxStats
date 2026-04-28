@@ -124,8 +124,25 @@ export async function POST(
 
   const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/screenshots/${storagePath}`;
 
+  const { data: lastRow } = await db
+    .from('player_screenshots')
+    .select('sort_order')
+    .eq('player_username', decoded.toLowerCase())
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const nextSortOrder = Number.isFinite(lastRow?.sort_order)
+    ? Number(lastRow?.sort_order) + 1
+    : 0;
+
   const { data: row, error: insertError } = await db.from('player_screenshots')
-    .insert({ player_username: decoded.toLowerCase(), storage_path: storagePath, public_url: publicUrl })
+    .insert({
+      player_username: decoded.toLowerCase(),
+      storage_path: storagePath,
+      public_url: publicUrl,
+      sort_order: nextSortOrder,
+    })
     .select('id, public_url, created_at')
     .single();
 
@@ -178,6 +195,12 @@ export async function DELETE(
   await db.from('player_screenshots')
     .delete()
     .eq('id', id);
+
+  await db
+    .from('players')
+    .update({ cover_screenshot_id: null })
+    .eq('username', decoded.toLowerCase())
+    .eq('cover_screenshot_id', id);
 
   return NextResponse.json({ ok: true });
 }

@@ -399,6 +399,7 @@ export type Database = {
           id: string
           player_username: string
           public_url: string
+          sort_order: number
           storage_path: string
         }
         Insert: {
@@ -406,6 +407,7 @@ export type Database = {
           id?: string
           player_username: string
           public_url: string
+          sort_order?: number
           storage_path: string
         }
         Update: {
@@ -413,6 +415,7 @@ export type Database = {
           id?: string
           player_username?: string
           public_url?: string
+          sort_order?: number
           storage_path?: string
         }
         Relationships: [
@@ -467,6 +470,7 @@ export type Database = {
         Row: {
           claimed_at: string | null
           claimed_by: string | null
+          cover_screenshot_id: string | null
           country: string | null
           created_at: string | null
           display_name: string
@@ -483,6 +487,7 @@ export type Database = {
         Insert: {
           claimed_at?: string | null
           claimed_by?: string | null
+          cover_screenshot_id?: string | null
           country?: string | null
           created_at?: string | null
           display_name: string
@@ -499,6 +504,7 @@ export type Database = {
         Update: {
           claimed_at?: string | null
           claimed_by?: string | null
+          cover_screenshot_id?: string | null
           country?: string | null
           created_at?: string | null
           display_name?: string
@@ -556,21 +562,60 @@ export type Database = {
       user_profiles: {
         Row: {
           created_at: string | null
+          default_search_mode: string
           email: string | null
           id: string
           is_admin: boolean
+          last_reauth_at: string | null
+          last_unclaim_at: string | null
+          locale: string | null
+          mfa_enabled: boolean
+          notify_competitions: boolean
+          notify_discord: boolean
+          notify_email: boolean
+          notify_milestones: boolean
+          notify_updates: boolean
+          prefers_compact_numbers: boolean
+          timezone: string | null
+          updated_at: string
         }
         Insert: {
           created_at?: string | null
+          default_search_mode?: string
           email?: string | null
           id: string
           is_admin?: boolean
+          last_reauth_at?: string | null
+          last_unclaim_at?: string | null
+          locale?: string | null
+          mfa_enabled?: boolean
+          notify_competitions?: boolean
+          notify_discord?: boolean
+          notify_email?: boolean
+          notify_milestones?: boolean
+          notify_updates?: boolean
+          prefers_compact_numbers?: boolean
+          timezone?: string | null
+          updated_at?: string
         }
         Update: {
           created_at?: string | null
+          default_search_mode?: string
           email?: string | null
           id?: string
           is_admin?: boolean
+          last_reauth_at?: string | null
+          last_unclaim_at?: string | null
+          locale?: string | null
+          mfa_enabled?: boolean
+          notify_competitions?: boolean
+          notify_discord?: boolean
+          notify_email?: boolean
+          notify_milestones?: boolean
+          notify_updates?: boolean
+          prefers_compact_numbers?: boolean
+          timezone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
