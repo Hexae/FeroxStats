@@ -299,6 +299,7 @@ export default function Navbar() {
 
         {/* Logo - desktop */}
         <Link href="/" className="hidden lg:flex items-center gap-2.5 shrink-0 mr-6">
+          <img src="/logo/logo.png" alt="FeroxStats" className="h-8 w-auto" />
           <span className="font-bold text-base tracking-tight text-white">
             Ferox<span className="text-blue-400">Stats</span>
           </span>

@@ -13,6 +13,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: { default: "FeroxStats", template: "%s | FeroxStats" },
   description: "Player stats, hiscores, and analytics for Ferox.ps – an Old School RuneScape private server.",
+  icons: {
+    icon: "/logo/logo.png",
+    shortcut: "/logo/logo.png",
+    apple: "/logo/logo.png",
+  },
   openGraph: {
     type: "website",
     siteName: "FeroxStats",
