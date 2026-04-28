@@ -70,14 +70,49 @@ const endpointGroups: EndpointGroup[] = [
         id: 'search-players',
         method: 'GET',
         path: '/api/search',
-        summary: 'Search players by partial username.',
+        summary: 'Unified search for players, G.E. items, and update posts.',
         auth: 'public',
-        queryParams: [{ name: 'q', type: 'string', required: true, description: 'Search term.' }],
+        queryParams: [
+          { name: 'q', type: 'string', required: true, description: 'Search term.' },
+          {
+            name: 'mode',
+            type: 'enum(suggest|full)',
+            required: false,
+            description: 'suggest returns short lists for autocomplete, full returns deeper sections.',
+          },
+        ],
         requestExample: 'curl -X GET "https://feroxstats.com/api/search?q=syn"',
-        responseExample: `[
-  { "username": "synx", "display_name": "Synx" },
-  { "username": "synical", "display_name": "Synical" }
-]`,
+        responseExample: `{
+  "query": "syn",
+  "results": [
+    {
+      "id": "player:synx",
+      "type": "player",
+      "label": "Synx",
+      "subtitle": "Rank #21",
+      "href": "/player/synx",
+      "username": "synx",
+      "displayName": "Synx",
+      "overallRank": 21
+    },
+    {
+      "id": "item:abyssal-whip",
+      "type": "item",
+      "label": "Abyssal whip",
+      "subtitle": "Grand Exchange item",
+      "href": "/ge/item/Abyssal%20whip",
+      "itemName": "Abyssal whip",
+      "itemId": 4151,
+      "lastTradedAt": "2026-04-27T10:08:11.000Z"
+    }
+  ],
+  "sections": {
+    "players": [],
+    "items": [],
+    "updates": []
+  },
+  "counts": { "players": 1, "items": 1, "updates": 0, "total": 2 }
+}`,
         statusCodes: [{ code: 200, description: 'Search results returned.' }],
       },
       {

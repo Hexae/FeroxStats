@@ -12,7 +12,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: { default: "FeroxStats", template: "%s | FeroxStats" },
-  description: "Player stats, hiscores, and analytics for Ferox.ps – an Old School RuneScape private server.",
+  description: "Player stats, hiscores, and analytics for Ferox.ps.",
   icons: {
     icon: "/logo/logo.png",
     shortcut: "/logo/logo.png",

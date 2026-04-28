@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, startTransition, useMemo } from 'react';
 import useSWR from 'swr';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase';
+import type { UnifiedSearchResponse, UnifiedSearchResult } from '@/lib/search-types';
 
 interface Competition {
   id: string;
@@ -44,10 +45,11 @@ function compTimeLabel(dateStr: string, status: 'active' | 'upcoming'): string {
   return status === 'active' ? `${days}d left` : `in ${days}d`;
 }
 
-interface Suggestion {
-  username: string;
-  display_name: string;
-}
+const SEARCH_TYPE_LABEL: Record<UnifiedSearchResult['type'], string> = {
+  player: 'Player',
+  item: 'Item',
+  update: 'Update',
+};
 
 // ─── CompetitionCard ──────────────────────────────────────────────────────────
 
@@ -196,7 +198,7 @@ export default function Navbar() {
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<UnifiedSearchResult[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -233,30 +235,43 @@ export default function Navbar() {
       return;
     }
     debounceRef.current = setTimeout(() => {
-      fetch(`/api/search?q=${encodeURIComponent(search.trim())}`)
+      fetch(`/api/search?q=${encodeURIComponent(search.trim())}&mode=suggest`)
         .then(r => r.json())
-        .then((data: Suggestion[]) => {
-          setSuggestions(data);
-          setShowSuggestions(data.length > 0);
+        .then((data: UnifiedSearchResponse) => {
+          const results = data?.results ?? [];
+          setSuggestions(results);
+          setShowSuggestions(results.length > 0);
           setSelectedIdx(-1);
         })
-        .catch(() => {});
+        .catch(() => {
+          setSuggestions([]);
+          setShowSuggestions(false);
+        });
     }, 200);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [search]);
 
-  function navigateToPlayer(name: string) {
-    router.push(`/player/${encodeURIComponent(name)}`);
+  function closeSearchUi() {
     setSearch('');
     setShowSuggestions(false);
     setMenuOpen(false);
+  }
+
+  function navigateToQuery(query: string) {
+    router.push(`/search?q=${encodeURIComponent(query)}`);
+    closeSearchUi();
+  }
+
+  function navigateToResult(result: UnifiedSearchResult) {
+    router.push(result.href);
+    closeSearchUi();
   }
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const q = search.trim();
     if (!q) return;
-    navigateToPlayer(q);
+    navigateToQuery(q);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -269,7 +284,7 @@ export default function Navbar() {
       setSelectedIdx(prev => (prev - 1 + suggestions.length) % suggestions.length);
     } else if (e.key === 'Enter' && selectedIdx >= 0) {
       e.preventDefault();
-      navigateToPlayer(suggestions[selectedIdx].username);
+      navigateToResult(suggestions[selectedIdx]);
     } else if (e.key === 'Escape') {
       setShowSuggestions(false);
     }
@@ -351,7 +366,7 @@ export default function Navbar() {
                 onChange={e => setSearch(e.target.value)}
                 onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                 onKeyDown={handleKeyDown}
-                placeholder="Search players..."
+                placeholder="Search players, items, updates..."
                 role="combobox"
                 aria-expanded={showSuggestions && suggestions.length > 0}
                 aria-controls="search-suggestions"
@@ -363,20 +378,27 @@ export default function Navbar() {
                 <div id="search-suggestions" role="listbox" className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border border-white/10 bg-[hsl(220_23%_11%)] shadow-2xl overflow-hidden">
                   {suggestions.map((s, i) => (
                     <button
-                      key={s.username}
+                      key={s.id}
                       id={`suggestion-${i}`}
                       role="option"
                       aria-selected={i === selectedIdx}
                       type="button"
-                      onMouseDown={() => navigateToPlayer(s.username)}
+                      onMouseDown={() => navigateToResult(s)}
                       className={`w-full text-left px-3 py-2 text-sm transition-colors ${
                         i === selectedIdx ? 'bg-emerald-600/20 text-white' : 'text-slate-300 hover:bg-white/[0.05]'
                       }`}
                     >
-                      <span className="font-medium">{s.display_name}</span>
-                      {s.display_name.toLowerCase() !== s.username && (
-                        <span className="ml-2 text-xs text-slate-500">{s.username}</span>
-                      )}
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium truncate">{s.label}</span>
+                        <span className="shrink-0 rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
+                          {SEARCH_TYPE_LABEL[s.type]}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 text-xs text-slate-500 truncate">
+                        {s.type === 'player' && s.displayName.toLowerCase() !== s.username
+                          ? `${s.subtitle ?? 'Player'} · @${s.username}`
+                          : s.subtitle}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -422,7 +444,7 @@ export default function Navbar() {
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search players..."
+                placeholder="Search players, items, updates..."
                 className="w-full h-10 rounded-md border border-[hsl(220_23%_20%)] bg-[hsl(220_23%_4%)] pl-9 pr-3 text-sm text-[hsl(220_18%_83%)] placeholder:text-[hsl(220_23%_43%)] focus:outline-none focus:ring-1 focus:ring-[hsl(220_23%_31%)] transition-colors"
               />
             </div>

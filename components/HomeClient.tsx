@@ -93,7 +93,7 @@ export default function HomeClient() {
     e.preventDefault();
     const q = query.trim();
     if (!q) return;
-    router.push(`/player/${encodeURIComponent(q)}`);
+    router.push(`/search?q=${encodeURIComponent(q)}`);
   }
 
   return (
@@ -131,8 +131,7 @@ export default function HomeClient() {
           </h1>
 
           <p className="text-slate-400 text-lg sm:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
-            Search any player to view their full skill breakdown, XP totals, and
-            hiscore standings — all pulled live from Ferox.
+            Search players, Grand Exchange items, and update posts from one place.
           </p>
 
           {/* Search form */}
@@ -152,7 +151,7 @@ export default function HomeClient() {
                   onChange={e => setQuery(e.target.value)}
                   onFocus={() => setFocused(true)}
                   onBlur={() => setFocused(false)}
-                  placeholder="Enter player name…"
+                  placeholder="Search players, items, updates..."
                   className="w-full bg-transparent pl-11 pr-4 py-4 text-white placeholder-slate-500 focus:outline-none text-base"
                   autoFocus
                 />
