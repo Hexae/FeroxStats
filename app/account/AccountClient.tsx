@@ -33,6 +33,8 @@ type SessionInfo = {
   expiresAt: string | null;
 };
 
+type TabId = 'profile' | 'security' | 'preferences' | 'media';
+
 type MfaFactor = {
   id: string;
   factor_type?: string;
@@ -165,6 +167,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState('');
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId>('profile');
 
   const reauthActive = useMemo(() => {
     if (!reauthUntil) return false;
@@ -675,51 +678,103 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
 
   const gm = getGameMode(claimedPlayer?.game_mode ?? 'regular');
 
+  const tabList: { id: TabId; label: string }[] = [
+    { id: 'profile', label: 'Profile' },
+    { id: 'security', label: 'Security' },
+    { id: 'preferences', label: 'Preferences' },
+    ...(claimedPlayer ? [{ id: 'media' as TabId, label: 'Media' }] : []),
+  ];
+
   return (
-    <main className="flex-1 max-w-2xl mx-auto px-4 py-10 w-full animate-fade-up">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-extrabold text-white mb-1">My Account</h1>
-          <p className="text-slate-400 text-sm">{user.email}</p>
+    <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-8 animate-fade-up">
+      {/* Status message */}
+      {msg && (
+        <div className={`mb-5 px-4 py-3 rounded-xl text-sm border ${
+          msg.type === 'ok'
+            ? 'bg-green-500/10 border-green-500/20 text-green-400'
+            : 'bg-red-500/10 border-red-500/20 text-red-400'
+        }`}>{msg.text}</div>
+      )}
+
+      {/* Account header card */}
+      <div className="bg-[#1a1826] border border-white/[0.07] rounded-2xl p-5 mb-5 flex flex-wrap items-center gap-4">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-800 flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-emerald-900/30 shrink-0 select-none">
+          {user.email.charAt(0).toUpperCase()}
         </div>
-        <div className="flex gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-white font-bold text-base truncate">{user.email}</p>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            {isAdmin && (
+              <span className="text-[11px] font-bold bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded-full">
+                Admin
+              </span>
+            )}
+            {claimedPlayer ? (
+              <span className="text-[11px] text-slate-500">
+                Linked to <span className="text-slate-300 font-medium">{claimedPlayer.display_name}</span>
+              </span>
+            ) : (
+              <span className="text-[11px] text-slate-600">No player linked</span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
           {isAdmin && (
-            <Link href="/admin" className="text-xs font-semibold bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-colors">
+            <Link
+              href="/admin"
+              className="text-xs font-semibold bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-colors"
+            >
               Admin Panel
             </Link>
           )}
-          <button onClick={handleSignOut} className="text-xs font-semibold bg-white/[0.05] border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/[0.08] px-3 py-1.5 rounded-lg transition-colors">
+          <button
+            onClick={handleSignOut}
+            className="text-xs font-semibold bg-white/[0.05] border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/[0.08] px-3 py-1.5 rounded-lg transition-colors"
+          >
             Sign Out
           </button>
         </div>
       </div>
 
-      {/* Status message */}
-      {msg && (
-        <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm border ${
-          msg.type === 'ok'
-            ? 'bg-green-500/10 border-green-500/30 text-green-400'
-            : 'bg-red-500/10 border-red-500/30 text-red-400'
-        }`}>{msg.text}</div>
-      )}
+      {/* Tab navigation */}
+      <div className="flex gap-1 bg-[#13111e] border border-white/[0.06] rounded-xl p-1 mb-6">
+        {tabList.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 text-xs font-semibold py-2 px-3 rounded-lg transition-all capitalize ${
+              activeTab === tab.id
+                ? 'bg-[#1e1c2a] text-white shadow-sm border border-white/[0.08]'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Tab: Profile ── */}
+      {activeTab === 'profile' && (
+      <div className="space-y-5">
 
       {/* Claimed profile card */}
       {claimedPlayer ? (
-        <div className="bg-[#1e1c2a] border border-white/[0.07] rounded-2xl p-5 mb-6 shadow-xl">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-900 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-emerald-900/40">
+        <>
+        {/* Player info card */}
+        <div className="bg-[#1a1826] border border-white/[0.07] rounded-2xl p-5 shadow-xl">
+          <div className="flex items-center gap-4 mb-5">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-900 flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-emerald-900/40 shrink-0 select-none">
               {claimedPlayer.display_name.charAt(0).toUpperCase()}
             </div>
-            <div>
-              <p className="text-white font-bold text-lg leading-none">{claimedPlayer.display_name}</p>
-              <span className={`text-xs font-semibold ${gm.color} flex items-center gap-1`}>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-bold text-xl leading-tight truncate">{claimedPlayer.display_name}</p>
+              <span className={`text-xs font-semibold ${gm.color} flex items-center gap-1 mt-0.5`}>
                 {gm.emoji && (
                   <Image
                     src={gm.emoji}
-                    width={16}
-                    height={16}
-                    className="inline-block h-4 w-4"
+                    width={14}
+                    height={14}
+                    className="inline-block h-3.5 w-3.5"
                     alt=""
                     unoptimized
                   />
@@ -727,65 +782,44 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
                 {gm.label}
               </span>
             </div>
-            <div className="ml-auto flex items-center gap-2">
-              <Link href={`/player/${encodeURIComponent(claimedPlayer.username)}`} className="text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <Link
+                href={`/player/${encodeURIComponent(claimedPlayer.username)}`}
+                className="text-xs font-semibold bg-emerald-700/20 border border-emerald-600/30 text-emerald-400 hover:bg-emerald-700/30 px-3 py-1.5 rounded-lg transition-colors"
+              >
                 View Profile →
               </Link>
-              <button
-                onClick={() => setShowUnclaimConfirm((prev) => !prev)}
-                className="text-xs font-semibold bg-white/[0.04] border border-white/[0.08] text-slate-500 hover:text-red-400 hover:border-red-500/30 px-2.5 py-1 rounded-lg transition-colors"
-              >
-                {showUnclaimConfirm ? 'Cancel' : 'Unlink'}
-              </button>
+              {claimedPlayer.claimed_at && (
+                <p className="text-[11px] text-slate-600">
+                  Linked {formatRelativeTime(claimedPlayer.claimed_at)}
+                </p>
+              )}
             </div>
           </div>
 
-          {showUnclaimConfirm && (
-            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-              <p className="text-xs text-red-300 mb-2">
-                Type <span className="font-bold">{unclaimExpectedText}</span> to confirm unlink.
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="text"
-                  value={unclaimConfirmText}
-                  onChange={(e) => setUnclaimConfirmText(e.target.value)}
-                  placeholder={unclaimExpectedText}
-                  className="bg-[#17151f] border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-red-500/50"
-                />
-                <button
-                  onClick={handleUnclaim}
-                  disabled={unclaimLoading || unclaimConfirmText.trim() !== unclaimExpectedText}
-                  className="text-xs font-semibold bg-red-600 hover:bg-red-500 disabled:opacity-60 text-white px-3 py-2 rounded-lg transition-colors"
-                >
-                  {unclaimLoading ? 'Unlinking…' : 'Confirm Unlink'}
-                </button>
-              </div>
-              <p className="mt-2 text-[11px] text-red-200/80">
-                Unlink cooldown: {UNCLAIM_COOLDOWN_HOURS} hours before claiming a new profile.
-              </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-5">
+            <div className="bg-[#13111e] rounded-xl px-3 py-3">
+              <p className="text-xl font-extrabold text-white">{formatNumber(claimedPlayer.total_level)}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Total Level</p>
             </div>
-          )}
-
-          <div className="grid grid-cols-3 gap-3 text-center mb-5">
-            <div className="bg-[#17151f] rounded-lg px-3 py-2">
-              <p className="text-lg font-extrabold text-white">{formatNumber(claimedPlayer.total_level)}</p>
-              <p className="text-xs text-slate-500">Total Level</p>
+            <div className="bg-[#13111e] rounded-xl px-3 py-3">
+              <p className="text-xl font-extrabold text-white">{claimedPlayer.overall_rank > 0 ? `#${formatNumber(claimedPlayer.overall_rank)}` : '—'}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Server Rank</p>
             </div>
-            <div className="bg-[#17151f] rounded-lg px-3 py-2">
-              <p className="text-lg font-extrabold text-white">{claimedPlayer.overall_rank > 0 ? `#${formatNumber(claimedPlayer.overall_rank)}` : '—'}</p>
-              <p className="text-xs text-slate-500">Server Rank</p>
+            <div className="bg-[#13111e] rounded-xl px-3 py-3">
+              <p className="text-xl font-extrabold text-white">{formatNumber(claimedPlayer.total_xp)}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Total XP</p>
             </div>
-            <div className="bg-[#17151f] rounded-lg px-3 py-2">
-              <p className="text-lg font-extrabold text-white">{gm.combatXp}x / {gm.skillingXp}x</p>
-              <p className="text-xs text-slate-500">XP Rates</p>
+            <div className="bg-[#13111e] rounded-xl px-3 py-3">
+              <p className="text-xl font-extrabold text-white">{gm.combatXp}x / {gm.skillingXp}x</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">XP Rates</p>
             </div>
           </div>
 
           {/* Game mode selector */}
-          <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
-              Game Mode {modeLoading && <span className="text-slate-600">(saving…)</span>}
+          <div className="mb-5">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">
+              Game Mode {modeLoading && <span className="text-slate-600 font-normal normal-case">(saving…)</span>}
             </p>
             <div className="flex flex-wrap gap-2">
               {GAME_MODES.map(m => (
@@ -796,15 +830,15 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                     selectedMode === m.key
                       ? 'bg-emerald-600/30 border-emerald-500/50 text-white'
-                      : 'bg-[#17151f] border-white/[0.06] text-slate-400 hover:border-white/20 hover:text-slate-200'
+                      : 'bg-[#13111e] border-white/[0.06] text-slate-400 hover:border-white/20 hover:text-slate-200'
                   }`}
                 >
                   {m.emoji && (
                     <Image
                       src={m.emoji}
-                      width={16}
-                      height={16}
-                      className="mr-1 inline-block h-4 w-4"
+                      width={14}
+                      height={14}
+                      className="mr-1 inline-block h-3.5 w-3.5"
                       alt=""
                       unoptimized
                     />
@@ -813,15 +847,12 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
                 </button>
               ))}
             </div>
-            <p className="text-xs text-slate-600 mt-2">
-              {gm.combatXp}x Combat · {gm.skillingXp}x Skilling
-            </p>
           </div>
 
           {/* Country selector */}
-          <div className="mt-5">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
-              Country {countryLoading && <span className="text-slate-600">(saving…)</span>}
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">
+              Country {countryLoading && <span className="text-slate-600 font-normal normal-case">(saving…)</span>}
             </p>
             <div className="flex items-center gap-3">
               {selectedCountry && (
@@ -841,10 +872,10 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
                   value={countrySearch}
                   onChange={e => setCountrySearch(e.target.value)}
                   placeholder={selectedCountry ? (COUNTRIES.find(c => c.code === selectedCountry)?.name ?? 'Search country…') : 'Search country…'}
-                  className="w-full bg-[#17151f] border border-white/[0.08] rounded-lg px-3 py-2 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition text-sm"
+                  className="w-full bg-[#13111e] border border-white/[0.08] rounded-lg px-3 py-2 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition text-sm"
                 />
                 {countrySearch && (
-                  <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto bg-[#1e1c2a] border border-white/[0.10] rounded-lg shadow-xl">
+                  <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto bg-[#1a1826] border border-white/[0.10] rounded-lg shadow-xl">
                     {COUNTRIES.filter(c =>
                       c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
                       c.code.toLowerCase().includes(countrySearch.toLowerCase())
@@ -889,17 +920,70 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
             </div>
           </div>
         </div>
+
+        {/* Danger zone */}
+        <div className="bg-[#1a1826] border border-red-500/15 rounded-2xl p-5 shadow-xl">
+          <p className="text-xs font-semibold text-red-400/80 uppercase tracking-widest mb-3">Danger Zone</p>
+          {!showUnclaimConfirm ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-300">Unlink player</p>
+                <p className="text-xs text-slate-500 mt-0.5">Remove the link to <span className="text-slate-400">{claimedPlayer.display_name}</span>. A {UNCLAIM_COOLDOWN_HOURS}h cooldown applies.</p>
+              </div>
+              <button
+                onClick={() => setShowUnclaimConfirm(true)}
+                className="text-xs font-semibold bg-red-600/10 border border-red-500/30 text-red-400 hover:bg-red-600/20 px-3 py-1.5 rounded-lg transition-colors shrink-0 ml-4"
+              >
+                Unlink
+              </button>
+            </div>
+          ) : (
+            <div>
+              <p className="text-xs text-red-300 mb-3">
+                Type <span className="font-bold font-mono bg-red-500/10 px-1 py-0.5 rounded">{unclaimExpectedText}</span> to confirm.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={unclaimConfirmText}
+                  onChange={(e) => setUnclaimConfirmText(e.target.value)}
+                  placeholder={unclaimExpectedText}
+                  className="bg-[#13111e] border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-red-500/50 font-mono"
+                />
+                <button
+                  onClick={handleUnclaim}
+                  disabled={unclaimLoading || unclaimConfirmText.trim() !== unclaimExpectedText}
+                  className="text-xs font-semibold bg-red-600 hover:bg-red-500 disabled:opacity-60 text-white px-3 py-2 rounded-lg transition-colors"
+                >
+                  {unclaimLoading ? 'Unlinking…' : 'Confirm Unlink'}
+                </button>
+                <button
+                  onClick={() => { setShowUnclaimConfirm(false); setUnclaimConfirmText(''); }}
+                  className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        </>
       ) : (
         /* Claim form */
-        <div className="bg-[#1e1c2a] border border-white/[0.07] rounded-2xl p-5 mb-6 shadow-xl">
-          <h2 className="text-sm font-bold text-white mb-1">Claim Your Profile</h2>
+        <div className="bg-[#1a1826] border border-white/[0.07] rounded-2xl p-5 shadow-xl">
+          <h2 className="text-base font-bold text-white mb-1">Link Your Profile</h2>
           <p className="text-xs text-slate-500 mb-4">
             Link your Ferox.ps username to this account to set your game mode badge.
             The player must have been searched on FeroxStats at least once.
           </p>
           {cooldownRemainingMs > 0 && (
-            <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-              Claim cooldown active. You can claim again in {formatRemaining(cooldownRemainingMs)}.
+            <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-300">
+              Claim cooldown active. You can link again in {formatRemaining(cooldownRemainingMs)}.
+            </div>
+          )}
+          {!reauthActive && (
+            <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-300">
+              Security verification required. Go to the <button type="button" onClick={() => setActiveTab('security')} className="underline font-semibold">Security tab</button> and verify your password first.
             </div>
           )}
           <form onSubmit={handleClaim} className="space-y-4">
@@ -908,7 +992,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
               <input
                 type="text" required value={claimInput} onChange={e => setClaimInput(e.target.value)}
                 placeholder="e.g. Hexae"
-                className="w-full bg-[#17151f] border border-white/[0.08] rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition text-sm"
+                className="w-full bg-[#13111e] border border-white/[0.08] rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition text-sm"
               />
             </div>
             <div>
@@ -921,15 +1005,15 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                       selectedMode === m.key
                         ? 'bg-emerald-600/30 border-emerald-500/50 text-white'
-                        : 'bg-[#17151f] border-white/[0.06] text-slate-400 hover:border-white/20 hover:text-slate-200'
+                        : 'bg-[#13111e] border-white/[0.06] text-slate-400 hover:border-white/20 hover:text-slate-200'
                     }`}
                   >
                     {m.emoji && (
                       <Image
                         src={m.emoji}
-                        width={16}
-                        height={16}
-                        className="mr-1 inline-block h-4 w-4"
+                        width={14}
+                        height={14}
+                        className="mr-1 inline-block h-3.5 w-3.5"
                         alt=""
                         unoptimized
                       />
@@ -939,7 +1023,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
                 ))}
               </div>
               <p className="text-xs text-slate-600 mt-2">
-                Selected: {getGameMode(selectedMode).combatXp}x Combat · {getGameMode(selectedMode).skillingXp}x Skilling
+                {getGameMode(selectedMode).combatXp}x Combat · {getGameMode(selectedMode).skillingXp}x Skilling
               </p>
             </div>
 
@@ -953,7 +1037,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
                   value={verificationRank}
                   onChange={(e) => setVerificationRank(e.target.value)}
                   placeholder="e.g. 214"
-                  className="w-full bg-[#17151f] border border-white/[0.08] rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition text-sm"
+                  className="w-full bg-[#13111e] border border-white/[0.08] rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition text-sm"
                 />
               </div>
               <div>
@@ -965,31 +1049,32 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
                   value={verificationLevel}
                   onChange={(e) => setVerificationLevel(e.target.value)}
                   placeholder="e.g. 2277"
-                  className="w-full bg-[#17151f] border border-white/[0.08] rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition text-sm"
+                  className="w-full bg-[#13111e] border border-white/[0.08] rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition text-sm"
                 />
               </div>
             </div>
-
-            {!reauthActive && (
-              <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
-                Security verification required before claiming. Use Security Center below to verify your password.
-              </p>
-            )}
 
             <button
               type="submit"
               disabled={claimLoading || !reauthActive || cooldownRemainingMs > 0}
               className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 disabled:opacity-60 text-white font-semibold px-5 py-2.5 rounded-lg transition-all shadow-lg shadow-emerald-900/30 text-sm"
             >
-              {claimLoading ? 'Claiming…' : 'Claim Profile'}
+              {claimLoading ? 'Claiming…' : 'Link Profile'}
             </button>
           </form>
         </div>
       )}
 
+      </div>
+      )} {/* end profile tab */}
+
+      {/* ── Tab: Security ── */}
+      {activeTab === 'security' && (
+      <div className="space-y-4">
+
       {/* Security Center */}
-      <section className="bg-[#1e1c2a] border border-white/[0.07] rounded-2xl p-5 mb-6 shadow-xl">
-        <h2 className="text-sm font-bold text-white mb-3">Security Center</h2>
+      <section className="bg-[#1a1826] border border-white/[0.07] rounded-2xl p-5 shadow-xl">
+        <h2 className="text-sm font-bold text-white mb-4">Security Center</h2>
 
         <div className="rounded-xl border border-white/[0.08] bg-[#17151f] p-4 mb-4">
           <p className="text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">Step-Up Verification</p>
@@ -1148,11 +1233,24 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
             </div>
           )}
         </div>
+
+        {/* Footer info */}
+        <p className="mt-4 text-[11px] text-slate-600">
+          Last re-auth: {formatRelativeTime(profile?.last_reauth_at)}
+          {profile?.last_unclaim_at ? ` · Last unlink: ${formatRelativeTime(profile.last_unclaim_at)}` : ''}
+        </p>
       </section>
 
+      </div>
+      )} {/* end security tab */}
+
+      {/* ── Tab: Preferences ── */}
+      {activeTab === 'preferences' && (
+      <div className="space-y-4">
+
       {/* Preferences */}
-      <section className="bg-[#1e1c2a] border border-white/[0.07] rounded-2xl p-5 mb-6 shadow-xl">
-        <h2 className="text-sm font-bold text-white mb-3">Preferences & Notifications</h2>
+      <section className="bg-[#1a1826] border border-white/[0.07] rounded-2xl p-5 shadow-xl">
+        <h2 className="text-sm font-bold text-white mb-4">Preferences & Notifications</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
@@ -1265,10 +1363,17 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
         </button>
       </section>
 
+      </div>
+      )} {/* end preferences tab */}
+
+      {/* ── Tab: Media ── */}
+      {activeTab === 'media' && claimedPlayer && (
+      <div className="space-y-4">
+
       {/* Media Manager */}
       {claimedPlayer && (
-        <section className="bg-[#1e1c2a] border border-white/[0.07] rounded-2xl p-5 mb-6 shadow-xl">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <section className="bg-[#1a1826] border border-white/[0.07] rounded-2xl p-5 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="text-sm font-bold text-white">Media Manager</h2>
             <label className={`text-xs font-semibold bg-sky-700 hover:bg-sky-600 text-white px-3 py-2 rounded-lg transition-colors cursor-pointer ${mediaLoading ? 'opacity-60 pointer-events-none' : ''}`}>
               Upload Screenshots
@@ -1354,10 +1459,9 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
         </section>
       )}
 
-      <p className="text-xs text-slate-600 mb-2">
-        Last re-auth: {formatRelativeTime(profile?.last_reauth_at)}
-        {profile?.last_unclaim_at ? ` | Last unlink: ${formatRelativeTime(profile.last_unclaim_at)}` : ''}
-      </p>
+      </div>
+      )} {/* end media tab */}
+
     </main>
   );
 }
