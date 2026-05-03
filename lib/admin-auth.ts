@@ -1,12 +1,13 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
 type AnonSupabase = SupabaseClient<Database>;
 
 interface AdminAuthResult {
   supabase: AnonSupabase | null;
+  user: User | null;
   error: string | null;
 }
 
@@ -34,7 +35,7 @@ export async function getAdminClient(): Promise<AdminAuthResult> {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { supabase: null, error: 'Not authenticated' };
+    return { supabase: null, user: null, error: 'Not authenticated' };
   }
 
   const { data: profile } = await supabase
@@ -44,8 +45,8 @@ export async function getAdminClient(): Promise<AdminAuthResult> {
     .single();
 
   if (!profile?.is_admin) {
-    return { supabase: null, error: 'Not authorized' };
+    return { supabase: null, user: null, error: 'Not authorized' };
   }
 
-  return { supabase, error: null };
+  return { supabase, user, error: null };
 }

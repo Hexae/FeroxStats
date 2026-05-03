@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import ConditionalShell from "@/components/ConditionalShell";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -39,11 +38,9 @@ export default function RootLayout({
     >
       <body className="min-h-full font-[var(--font-inter)]">
         <div className="relative flex flex-col min-h-screen">
-          <Navbar />
-          <main className="flex-1">
+          <ConditionalShell>
             {children}
-            <Footer />
-          </main>
+          </ConditionalShell>
         </div>
       </body>
     </html>

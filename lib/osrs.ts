@@ -39,7 +39,7 @@ export function formatXp(xp: number | string): string {
 }
 
 export function formatNumber(n: number): string {
-  return n.toLocaleString();
+  return n.toLocaleString('en-US');
 }
 
 // Virtual level — compute level beyond 99 based on XP (up to 126).
