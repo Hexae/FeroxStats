@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getGameMode, GAME_MODES, GameModeKey, formatNumber } from '@/lib/osrs';
+import GameModeSelect from '@/components/GameModeSelect';
 
 interface Player {
   username: string;
@@ -107,6 +108,7 @@ export default function AdminClient({ players, userProfiles, groups, updates }: 
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('players');
   const [search, setSearch] = useState('');
+  const [gameModeFilter, setGameModeFilter] = useState<string>('all');
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [updatingMode, setUpdatingMode] = useState<string | null>(null);
   const [togglingGroup, setTogglingGroup] = useState<string | null>(null);
@@ -114,10 +116,13 @@ export default function AdminClient({ players, userProfiles, groups, updates }: 
   const [deletingUpdate, setDeletingUpdate] = useState(false);
   const [updateForm, setUpdateForm] = useState<UpdateForm>(createEmptyForm());
 
-  const filtered = players.filter((p) =>
-    p.username.includes(search.toLowerCase()) ||
-    p.display_name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = players.filter((p) => {
+    const matchesSearch =
+      p.username.includes(search.toLowerCase()) ||
+      p.display_name.toLowerCase().includes(search.toLowerCase());
+    const matchesMode = gameModeFilter === 'all' || p.game_mode === gameModeFilter;
+    return matchesSearch && matchesMode;
+  });
 
   const sortedUpdates = useMemo(
     () => [...updates].sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()),
@@ -315,13 +320,16 @@ export default function AdminClient({ players, userProfiles, groups, updates }: 
 
       {tab === 'players' && (
         <>
-          <input
-            type="text"
-            placeholder="Search players..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full mb-4 bg-[#1e1c2a] border border-white/[0.07] rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 text-sm"
-          />
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              placeholder="Search players..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 bg-[#1e1c2a] border border-white/[0.07] rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 text-sm"
+            />
+            <GameModeSelect value={gameModeFilter} onChange={setGameModeFilter} includeAll />
+          </div>
           <div className="bg-[#1e1c2a] border border-white/[0.07] rounded-2xl overflow-hidden shadow-2xl">
             <table className="w-full text-sm">
               <thead>

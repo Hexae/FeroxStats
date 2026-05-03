@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   // Get all players
   const { data: players } = await db
     .from('players')
-    .select('username, display_name');
+    .select('username, display_name, game_mode');
 
   if (!players || players.length === 0) {
     return NextResponse.json({ period, gains: [] });
@@ -63,10 +63,12 @@ export async function GET(request: NextRequest) {
 
   // Build display name map
   const nameMap = new Map(players.map(p => [p.username, p.display_name]));
+  const gameModeMap = new Map(players.map(p => [p.username, p.game_mode ?? 'regular']));
 
   const gains: Array<{
     username: string;
     display_name: string;
+    game_mode: string;
     xpGained: number;
     levelsGained: number;
   }> = [];
@@ -82,6 +84,7 @@ export async function GET(request: NextRequest) {
     gains.push({
       username,
       display_name: nameMap.get(username) ?? username,
+      game_mode: gameModeMap.get(username) ?? 'regular',
       xpGained,
       levelsGained: newTotal - oldTotal,
     });

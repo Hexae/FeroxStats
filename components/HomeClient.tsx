@@ -287,18 +287,6 @@ export default function HomeClient() {
             </svg>
             Join our Discord
           </a>
-
-          <a
-            href="https://patreon.com/feroxstats"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex gap-x-2 items-center whitespace-nowrap justify-center px-5 h-9 rounded-md text-sm font-medium transition-colors bg-[#FF424D] text-white hover:bg-[#E63539] active:opacity-80 shadow-lg"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
-              <path d="M14.82 2.41c3.96 0 7.18 3.24 7.18 7.21 0 3.96-3.22 7.18-7.18 7.18-3.97 0-7.21-3.22-7.21-7.18 0-3.97 3.24-7.21 7.21-7.21M2 21.6h3.5V2.41H2V21.6Z" />
-            </svg>
-            See Patreon benefits
-          </a>
         </div>
       </section>
     </div>

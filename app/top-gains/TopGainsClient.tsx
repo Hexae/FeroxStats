@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { formatXp } from '@/lib/osrs';
+import { formatXp, getGameMode } from '@/lib/osrs';
+import GameModeSelect from '@/components/GameModeSelect';
 
 const PERIODS = [
   { key: 'day', label: 'Today' },
@@ -19,12 +21,14 @@ const PERIOD_HOURS: Record<string, number> = {
 interface GainEntry {
   username: string;
   display_name: string;
+  game_mode: string;
   xpGained: number;
   levelsGained: number;
 }
 
 export default function TopGainsClient() {
   const [period, setPeriod] = useState<string>('week');
+  const [gameModeFilter, setGameModeFilter] = useState<string>('all');
   const [gains, setGains] = useState<GainEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,18 +56,21 @@ export default function TopGainsClient() {
       <p className="text-slate-400 text-sm mb-6">Who gained the most XP? Rankings update as snapshots are collected.</p>
 
       {/* Period picker */}
-      <div className="flex gap-1 bg-[#1e1c2a] border border-white/[0.07] rounded-xl p-1 mb-6 w-fit">
-        {PERIODS.map(p => (
-          <button
-            key={p.key}
-            onClick={() => setPeriod(p.key)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-              period === p.key ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap gap-2 mb-6 items-center">
+        <div className="flex gap-1 bg-[#1e1c2a] border border-white/[0.07] rounded-xl p-1 w-fit">
+          {PERIODS.map(p => (
+            <button
+              key={p.key}
+              onClick={() => setPeriod(p.key)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                period === p.key ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <GameModeSelect value={gameModeFilter} onChange={setGameModeFilter} includeAll />
       </div>
 
       {loading ? (
@@ -72,7 +79,7 @@ export default function TopGainsClient() {
             <div key={i} className="h-14 rounded-xl bg-white/5 animate-pulse" style={{ animationDelay: `${i * 60}ms` }} />
           ))}
         </div>
-      ) : gains.length === 0 ? (
+      ) : (gains.filter(g => gameModeFilter === 'all' || g.game_mode === gameModeFilter)).length === 0 ? (
         <div className="text-center py-16 text-slate-500">
           <p className="text-lg font-semibold mb-1">No gains recorded</p>
           <p className="text-sm">Not enough snapshots in this period yet.</p>
@@ -87,7 +94,7 @@ export default function TopGainsClient() {
             <span className="w-16 text-right">Levels</span>
           </div>
 
-          {gains.map((g, i) => (
+          {gains.filter(g => gameModeFilter === 'all' || g.game_mode === gameModeFilter).map((g, i) => (
             <div
               key={g.username}
               className={`grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-0 px-4 py-3 transition hover:bg-white/[0.03] ${
@@ -101,8 +108,9 @@ export default function TopGainsClient() {
               </span>
               <Link
                 href={`/player/${encodeURIComponent(g.username)}`}
-                className="text-sm font-semibold text-slate-200 hover:text-emerald-400 transition-colors truncate"
+                className="flex items-center gap-1.5 text-sm font-semibold text-slate-200 hover:text-emerald-400 transition-colors truncate"
               >
+                {(() => { const gm = getGameMode(g.game_mode); return gm.emoji ? <Image src={gm.emoji} alt={gm.label} width={14} height={14} className="shrink-0 opacity-90" /> : null; })()}
                 {g.display_name}
               </Link>
               <span className="w-28 text-right text-sm tabular-nums font-medium text-emerald-400">
