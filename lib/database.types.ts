@@ -14,6 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_action_log: {
+        Row: {
+          action: string
+          admin_email: string | null
+          admin_id: string
+          created_at: string
+          detail: string | null
+          id: number
+          target_username: string
+        }
+        Insert: {
+          action: string
+          admin_email?: string | null
+          admin_id: string
+          created_at?: string
+          detail?: string | null
+          id?: never
+          target_username: string
+        }
+        Update: {
+          action?: string
+          admin_email?: string | null
+          admin_id?: string
+          created_at?: string
+          detail?: string | null
+          id?: never
+          target_username?: string
+        }
+        Relationships: []
+      }
+      competition_standings: {
+        Row: {
+          competition_id: string
+          end_xp: number
+          rank: number
+          start_xp: number
+          updated_at: string
+          username: string
+          xp_gained: number
+        }
+        Insert: {
+          competition_id: string
+          end_xp?: number
+          rank?: number
+          start_xp?: number
+          updated_at: string
+          username: string
+          xp_gained?: number
+        }
+        Update: {
+          competition_id?: string
+          end_xp?: number
+          rank?: number
+          start_xp?: number
+          updated_at?: string
+          username?: string
+          xp_gained?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_standings_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "group_competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_standings_username_fkey"
+            columns: ["username"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["username"]
+          },
+        ]
+      }
+      game_updates: {
+        Row: {
+          category: string
+          created_at: string
+          id: number
+          image: string
+          is_published: boolean
+          markdown: string
+          published_at: string
+          slug: string
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: never
+          image?: string
+          is_published?: boolean
+          markdown: string
+          published_at: string
+          slug: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: never
+          image?: string
+          is_published?: boolean
+          markdown?: string
+          published_at?: string
+          slug?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ge_price_history: {
         Row: {
           id: number
@@ -37,113 +154,6 @@ export type Database = {
           sampled_at?: string
         }
         Relationships: []
-      }
-      player_milestones: {
-        Row: {
-          id: string
-          player_username: string
-          skill_id: number
-          skill_name: string
-          old_level: number
-          new_level: number
-          xp: number
-          achieved_at: string
-        }
-        Insert: {
-          id?: string
-          player_username: string
-          skill_id: number
-          skill_name: string
-          old_level: number
-          new_level: number
-          xp: number
-          achieved_at?: string
-        }
-        Update: {
-          id?: string
-          player_username?: string
-          skill_id?: number
-          skill_name?: string
-          old_level?: number
-          new_level?: number
-          xp?: number
-          achieved_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "player_milestones_player_username_fkey"
-            columns: ["player_username"]
-            isOneToOne: false
-            referencedRelation: "players"
-            referencedColumns: ["username"]
-          },
-        ]
-      }
-      tracker_heartbeat: {
-        Row: {
-          service: string
-          status: string
-          last_seen: string
-          metadata: Json | null
-        }
-        Insert: {
-          service: string
-          status?: string
-          last_seen: string
-          metadata?: Json | null
-        }
-        Update: {
-          service?: string
-          status?: string
-          last_seen?: string
-          metadata?: Json | null
-        }
-        Relationships: []
-      }
-      competition_standings: {
-        Row: {
-          competition_id: string
-          username: string
-          rank: number
-          xp_gained: number
-          start_xp: number
-          end_xp: number
-          updated_at: string
-        }
-        Insert: {
-          competition_id: string
-          username: string
-          rank?: number
-          xp_gained?: number
-          start_xp?: number
-          end_xp?: number
-          updated_at: string
-        }
-        Update: {
-          competition_id?: string
-          username?: string
-          rank?: number
-          xp_gained?: number
-          start_xp?: number
-          end_xp?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "competition_standings_competition_id_fkey"
-            columns: ["competition_id"]
-            isOneToOne: false
-            referencedRelation: "group_competitions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "competition_standings_username_fkey"
-            columns: ["username"]
-            isOneToOne: false
-            referencedRelation: "players"
-            referencedColumns: ["username"]
-          },
-        ]
       }
       group_competitions: {
         Row: {
@@ -303,48 +313,6 @@ export type Database = {
           },
         ]
       }
-      game_updates: {
-        Row: {
-          category: string
-          created_at: string
-          id: number
-          image: string
-          is_published: boolean
-          markdown: string
-          published_at: string
-          slug: string
-          summary: string | null
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          category?: string
-          created_at?: string
-          id?: never
-          image?: string
-          is_published?: boolean
-          markdown: string
-          published_at: string
-          slug: string
-          summary?: string | null
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          category?: string
-          created_at?: string
-          id?: never
-          image?: string
-          is_published?: boolean
-          markdown?: string
-          published_at?: string
-          slug?: string
-          summary?: string | null
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       groups: {
         Row: {
           banner_url: string | null
@@ -352,7 +320,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           description: string | null
-          discord_verified: boolean | null
+          discord_verified: boolean
           discord_webhook_url: string | null
           id: string
           is_private: boolean | null
@@ -367,7 +335,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
-          discord_verified?: boolean | null
+          discord_verified?: boolean
           discord_webhook_url?: string | null
           id?: string
           is_private?: boolean | null
@@ -382,7 +350,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
-          discord_verified?: boolean | null
+          discord_verified?: boolean
           discord_webhook_url?: string | null
           id?: string
           is_private?: boolean | null
@@ -392,6 +360,47 @@ export type Database = {
           slug?: string
         }
         Relationships: []
+      }
+      player_milestones: {
+        Row: {
+          achieved_at: string
+          id: string
+          new_level: number
+          old_level: number
+          player_username: string
+          skill_id: number
+          skill_name: string
+          xp: number
+        }
+        Insert: {
+          achieved_at?: string
+          id?: string
+          new_level: number
+          old_level: number
+          player_username: string
+          skill_id: number
+          skill_name: string
+          xp: number
+        }
+        Update: {
+          achieved_at?: string
+          id?: string
+          new_level?: number
+          old_level?: number
+          player_username?: string
+          skill_id?: number
+          skill_name?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_milestones_player_username_fkey"
+            columns: ["player_username"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["username"]
+          },
+        ]
       }
       player_screenshots: {
         Row: {
@@ -470,8 +479,8 @@ export type Database = {
         Row: {
           claimed_at: string | null
           claimed_by: string | null
-          cover_screenshot_id: string | null
           country: string | null
+          cover_screenshot_id: string | null
           created_at: string | null
           display_name: string
           first_tracked_at: string | null
@@ -487,8 +496,8 @@ export type Database = {
         Insert: {
           claimed_at?: string | null
           claimed_by?: string | null
-          cover_screenshot_id?: string | null
           country?: string | null
+          cover_screenshot_id?: string | null
           created_at?: string | null
           display_name: string
           first_tracked_at?: string | null
@@ -504,8 +513,8 @@ export type Database = {
         Update: {
           claimed_at?: string | null
           claimed_by?: string | null
-          cover_screenshot_id?: string | null
           country?: string | null
+          cover_screenshot_id?: string | null
           created_at?: string | null
           display_name?: string
           first_tracked_at?: string | null
@@ -517,6 +526,35 @@ export type Database = {
           total_xp?: number
           updated_at?: string | null
           username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "players_cover_screenshot_id_fkey"
+            columns: ["cover_screenshot_id"]
+            isOneToOne: false
+            referencedRelation: "player_screenshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tracker_heartbeat: {
+        Row: {
+          last_seen: string
+          metadata: Json | null
+          service: string
+          status: string
+        }
+        Insert: {
+          last_seen: string
+          metadata?: Json | null
+          service: string
+          status?: string
+        }
+        Update: {
+          last_seen?: string
+          metadata?: Json | null
+          service?: string
+          status?: string
         }
         Relationships: []
       }
