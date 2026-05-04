@@ -110,7 +110,7 @@ export default function TopGainsClient() {
                 href={`/player/${encodeURIComponent(g.username)}`}
                 className="flex items-center gap-1.5 text-sm font-semibold text-slate-200 hover:text-emerald-400 transition-colors truncate"
               >
-                {(() => { const gm = getGameMode(g.game_mode); return gm.emoji ? <Image src={gm.emoji} alt={gm.label} width={14} height={14} className="shrink-0 opacity-90" /> : null; })()}
+                {(() => { const gm = getGameMode(g.game_mode); return gm.emoji ? <Image src={gm.emoji} alt={gm.label} width={14} height={14} className={`shrink-0 opacity-90 ${gm.key === 'realism_group_ironman' ? 'h-4' : 'h-3.5'} w-auto`} /> : null; })()}
                 {g.display_name}
               </Link>
               <span className="w-28 text-right text-sm tabular-nums font-medium text-emerald-400">

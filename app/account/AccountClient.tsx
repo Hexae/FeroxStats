@@ -774,7 +774,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
                     src={gm.emoji}
                     width={14}
                     height={14}
-                    className="inline-block h-3.5 w-3.5"
+                    className={`inline-block ${gm.key === 'realism_group_ironman' ? 'h-4' : 'h-3.5'} w-auto`}
                     alt=""
                     unoptimized
                   />
@@ -838,7 +838,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
                       src={m.emoji}
                       width={14}
                       height={14}
-                      className="mr-1 inline-block h-3.5 w-3.5"
+                      className={`mr-1 inline-block ${m.key === 'realism_group_ironman' ? 'h-4' : 'h-3.5'} w-auto`}
                       alt=""
                       unoptimized
                     />
@@ -1013,7 +1013,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
                         src={m.emoji}
                         width={14}
                         height={14}
-                        className="mr-1 inline-block h-3.5 w-3.5"
+                        className={`mr-1 inline-block ${m.key === 'realism_group_ironman' ? 'h-4' : 'h-3.5'} w-auto`}
                         alt=""
                         unoptimized
                       />

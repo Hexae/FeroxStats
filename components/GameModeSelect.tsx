@@ -38,7 +38,7 @@ export default function GameModeSelect({ value, onChange, includeAll = false }: 
         className="flex items-center gap-2 bg-[#1e1c2a] border border-white/[0.07] rounded-xl px-3 py-2 text-slate-300 text-sm focus:outline-none focus:border-emerald-500/50 min-w-[150px] justify-between"
       >
         <span className="flex items-center gap-1.5">
-          {icon && <Image src={icon} alt={label} width={14} height={14} className="shrink-0 opacity-90" />}
+          {icon && <Image src={icon} alt={label} width={14} height={14} className={`shrink-0 opacity-90 ${selected?.key === 'realism_group_ironman' ? 'h-4' : 'h-3.5'} w-auto`} />}
           {label}
         </span>
         <svg className={`w-3.5 h-3.5 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -58,7 +58,7 @@ export default function GameModeSelect({ value, onChange, includeAll = false }: 
               }`}
             >
               {m.emoji
-                ? <Image src={m.emoji} alt={m.label} width={14} height={14} className="shrink-0 opacity-90" />
+                ? <Image src={m.emoji} alt={m.label} width={14} height={14} className={`shrink-0 opacity-90 ${m.key === 'realism_group_ironman' ? 'h-4' : 'h-3.5'} w-auto`} />
                 : <span className="w-[14px] shrink-0" />}
               {m.label}
             </button>
