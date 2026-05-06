@@ -17,6 +17,40 @@ function getPeriodStart(period: Period): Date | null {
 
 type SnapRow = { created_at: string | null; total_xp: number | null; snapshot_data?: unknown };
 
+async function fetchSnapshots(
+  db: ReturnType<typeof serviceClient>,
+  username: string,
+  since?: Date | null,
+): Promise<SnapRow[]> {
+  const pageSize = 1000;
+  let from = 0;
+  const rows: SnapRow[] = [];
+
+  while (true) {
+    let query = db
+      .from('player_snapshots')
+      .select('created_at, total_xp, snapshot_data')
+      .eq('player_username', username)
+      .order('created_at', { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (since) {
+      query = query.gte('created_at', since.toISOString());
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const batch = (data ?? []) as SnapRow[];
+    rows.push(...batch);
+
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return rows;
+}
+
 function extractTotalXp(row: SnapRow): number {
   if (row.total_xp != null && row.total_xp > 0) return row.total_xp;
   const overall = (row.snapshot_data as { skills?: Array<{ id: number; xp: string }> } | null)?.skills?.find((s) => s.id === 0);
@@ -63,24 +97,9 @@ export async function GET(
   const since = getPeriodStart(period);
   const oneYearAgo = subYears(new Date(), 1);
 
-  let snapQuery = db
-    .from('player_snapshots')
-    .select('created_at, snapshot_data, total_xp')
-    .eq('player_username', decoded)
-    .order('created_at', { ascending: true });
-
-  if (since) {
-    snapQuery = snapQuery.gte('created_at', since.toISOString());
-  }
-
-  const [{ data: snaps }, { data: yearSnaps }] = await Promise.all([
-    snapQuery,
-    db
-      .from('player_snapshots')
-      .select('created_at, total_xp, snapshot_data')
-      .eq('player_username', decoded)
-      .gte('created_at', oneYearAgo.toISOString())
-      .order('created_at', { ascending: true }),
+  const [snaps, yearSnaps] = await Promise.all([
+    fetchSnapshots(db, decoded, since),
+    fetchSnapshots(db, decoded, oneYearAgo),
   ]);
 
   const heatmap = buildDailyXpGains(yearSnaps ?? []);
@@ -99,6 +118,8 @@ export async function GET(
 
   const oldest = snaps[0];
   const latest = snaps[snaps.length - 1];
+  const oldestXp = extractTotalXp(oldest);
+  const latestXp = extractTotalXp(latest);
 
   type SkillRow = { id: number; rank: number; level: number; xp: string };
   const snapshotData = (data: unknown) => data as { skills?: SkillRow[] } | null;
@@ -135,9 +156,9 @@ export async function GET(
     gains: true,
     start: oldest.created_at,
     end: latest.created_at,
-    xpStart: oldest.total_xp ?? 0,
-    xpEnd: latest.total_xp ?? 0,
-    totalXpGained: (latest.total_xp ?? 0) - (oldest.total_xp ?? 0),
+    xpStart: oldestXp,
+    xpEnd: latestXp,
+    totalXpGained: latestXp - oldestXp,
     skillGains,
     dailyGains: buildDailyXpGains(snaps),
     heatmap,
