@@ -116,11 +116,6 @@ export default function HomeClient() {
         </div>
 
         <div className="relative z-10 max-w-4xl mx-auto animate-fade-up">
-          {/* Live badge */}
-          <div className="inline-flex items-center gap-2 bg-emerald-950/50 border border-emerald-900/40 text-emerald-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-8 shadow-lg shadow-emerald-950/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-green inline-block" />
-            Live Analytics
-          </div>
 
           {/* Headline */}
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight mb-5 leading-[1.05]">
