@@ -274,7 +274,7 @@ export default function HomeClient() {
 
         <div className="flex flex-col md:flex-row items-center justify-center gap-4">
           <a
-            href="https://github.com/Hexae/RSPS_Stats"
+            href="https://github.com/Hexae/FeroxStats"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex gap-x-2 items-center whitespace-nowrap justify-center px-5 h-9 rounded-md text-sm font-medium transition-colors bg-gray-700 text-white hover:bg-gray-600 active:opacity-80 shadow-lg"
