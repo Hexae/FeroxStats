@@ -6,8 +6,9 @@ started and what to keep in mind when submitting changes.
 ## Getting started
 
 1. Fork the repository and clone your fork.
-2. Follow the [setup instructions in the README](README.md#getting-started) to
-   get the project running locally.
+2. Follow the development guide for the component you want to work on:
+   - [App Development Guide](.github/contributing/app-guide.md) — web app & API
+   - [Bot Development Guide](.github/contributing/bot-guide.md) — Discord bot
 3. Create a new branch for your change:
 
 ```bash
