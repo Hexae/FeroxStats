@@ -1,8 +1,7 @@
 <div align="center">
 
-![FeroxStats logo](./public/logo/logo.png)
+<img src="./public/logo/logo.png" alt="FeroxStats logo" width="120" />
 
-🔗 [ferox.ps](https://ferox.ps)
 
 The open-source stats and analytics platform for the Ferox.ps OSRS private server.
 
@@ -13,7 +12,7 @@ FeroxStats tracks player progress, group events, Grand Exchange activity, compet
 [![Last Commit](https://img.shields.io/github/last-commit/Hexae/RSPS_Stats)](https://github.com/Hexae/RSPS_Stats/commits)
 [![Open Issues](https://img.shields.io/github/issues/Hexae/RSPS_Stats)](https://github.com/Hexae/RSPS_Stats/issues)
 
-[Website](https://ferox.ps) | [Discord](#) | [API Docs](https://ferox.ps/api-docs)
+[Website](https://www.feroxstats.com/) | [Discord](#) | [API Docs](https://www.feroxstats.com/api-docs)
 
 </div>
 
@@ -21,7 +20,7 @@ FeroxStats tracks player progress, group events, Grand Exchange activity, compet
 
 > This project is not affiliated with Jagex Ltd or the official Old School RuneScape game.
 
-## 📚 Project structure and stack
+## Project structure and stack
 
 The repository is divided into two components:
 
@@ -37,13 +36,13 @@ The repository is divided into two components:
 
 <br />
 
-## 🛠️ API
+## API
 
 FeroxStats exposes a REST API used by the web app and bot. Interactive documentation is available at `/api-docs` on any running instance.
 
 <br />
 
-## 💬 Suggestions and bugs
+## Suggestions and bugs
 
 Have a suggestion or a bug to report? [Click here to create an issue](https://github.com/your-org/feroxstats/issues)
 
@@ -51,7 +50,7 @@ Have something else you'd like to discuss? [Join us on Discord](#)
 
 <br />
 
-## 📸 Screenshots
+## Screenshots
 
 ### Leaderboard
 
@@ -75,7 +74,7 @@ Have something else you'd like to discuss? [Join us on Discord](#)
 
 <br />
 
-## 🤝 Contributing
+## Contributing
 
 Check the development guides below to get started:
 

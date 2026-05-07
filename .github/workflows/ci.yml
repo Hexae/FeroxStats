@@ -28,3 +28,12 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder_anon_key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder_service_role_key
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          NEXT_PUBLIC_FEROX_API_BASE: https://ferox.ps/api
+          NEXT_PUBLIC_HCAPTCHA_SITE_KEY: placeholder_hcaptcha_key
+          CRON_SECRET: placeholder_cron_secret
+          RESEND_API_KEY: placeholder_resend_key
