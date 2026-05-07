@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
   }
 
   const seen = new Set<string>();
-  type SkillRow = { rank: number; name: string; level: number; xp: number };
+  type SkillRow = { rank: number; username: string; name: string; game_mode: string; level: number; xp: number };
   const results: SkillRow[] = [];
 
   for (const snap of snapshots) {
