@@ -322,6 +322,9 @@ export default function Navbar() {
 
         {/* Desktop nav links */}
         <nav className="hidden lg:flex items-center gap-1 mr-4">
+          <Link href="/leaderboard" className="px-3 py-1.5 rounded-md text-sm font-medium text-[hsl(220_20%_64%)] hover:text-white hover:bg-[hsl(220_23%_15%)] transition-colors">
+            Leaderboard
+          </Link>
           <Link href="/compare" className="px-3 py-1.5 rounded-md text-sm font-medium text-[hsl(220_20%_64%)] hover:text-white hover:bg-[hsl(220_23%_15%)] transition-colors">
             Compare
           </Link>
@@ -450,6 +453,7 @@ export default function Navbar() {
             </div>
           </form>
           <div className="border-t border-[hsl(220_23%_20%)] pt-2 flex flex-col gap-1">
+            <Link href="/leaderboard" onClick={() => setMenuOpen(false)} className="px-4 py-2.5 rounded-md text-sm font-medium text-[hsl(220_20%_64%)] hover:text-white hover:bg-[hsl(220_23%_15%)] transition-colors">Leaderboard</Link>
             <Link href="/compare" onClick={() => setMenuOpen(false)} className="px-4 py-2.5 rounded-md text-sm font-medium text-[hsl(220_20%_64%)] hover:text-white hover:bg-[hsl(220_23%_15%)] transition-colors">Compare</Link>
             <Link href="/top-gains" onClick={() => setMenuOpen(false)} className="px-4 py-2.5 rounded-md text-sm font-medium text-[hsl(220_20%_64%)] hover:text-white hover:bg-[hsl(220_23%_15%)] transition-colors">Top Gains</Link>
             <MobileGroupsSection onClose={() => setMenuOpen(false)} />

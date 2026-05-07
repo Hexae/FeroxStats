@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   if (skill === 'overall') {
     const { data, error } = await supabase
       .from('players')
-      .select('display_name, overall_rank, total_level, total_xp')
+      .select('username, display_name, game_mode, overall_rank, total_level, total_xp')
       .gt('overall_rank', 0)
       .order('overall_rank', { ascending: true })
       .limit(limit);
@@ -27,7 +27,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       hiscores: (data ?? []).map(p => ({
         rank: p.overall_rank,
+        username: p.username,
         name: p.display_name,
+        game_mode: p.game_mode ?? 'regular',
         level: p.total_level,
         xp: p.total_xp,
       })),
@@ -48,15 +50,17 @@ export async function GET(request: NextRequest) {
 
   if (error || !snapshots) return NextResponse.json({ hiscores: [] });
 
-  // Build a display_name map from the players table
+  // Build a display_name + game_mode map from the players table
   const usernames = [...new Set(snapshots.map(s => s.player_username))];
   const { data: playerRows } = await supabase
     .from('players')
-    .select('username, display_name')
+    .select('username, display_name, game_mode')
     .in('username', usernames);
   const displayNames: Record<string, string> = {};
+  const gameModes: Record<string, string> = {};
   for (const p of playerRows ?? []) {
     displayNames[p.username] = p.display_name ?? p.username;
+    gameModes[p.username] = p.game_mode ?? 'regular';
   }
 
   const seen = new Set<string>();
@@ -75,7 +79,9 @@ export async function GET(request: NextRequest) {
 
     results.push({
       rank: s.rank,
+      username: snap.player_username,
       name: displayNames[snap.player_username] ?? snap.player_username,
+      game_mode: gameModes[snap.player_username] ?? 'regular',
       level: s.level,
       xp: parseInt(s.xp),
     });

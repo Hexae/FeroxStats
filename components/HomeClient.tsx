@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const FEATURES = [
   {
@@ -99,9 +100,9 @@ export default function HomeClient() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* ── Hero ── */}
-      <section className="relative flex flex-col items-center justify-center min-h-[80vh] text-center px-4 overflow-hidden">
-        {/* Background gradient orbs */}
-        <div className="absolute inset-0 pointer-events-none select-none" aria-hidden>
+      <section className="relative flex flex-col items-center justify-center min-h-[80vh] text-center px-4">
+        {/* Background gradient orbs — own overflow-hidden so Death can straddle the section bottom */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden>
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-emerald-950/20 rounded-full blur-[140px]" />
           <div className="absolute top-1/3 left-1/4 w-[400px] h-[400px] bg-emerald-900/8 rounded-full blur-[100px]" />
           <div className="absolute top-1/4 right-1/4 w-[350px] h-[350px] bg-emerald-900/6 rounded-full blur-[120px]" />
@@ -175,6 +176,19 @@ export default function HomeClient() {
           </div>
         </div>
 
+        {/* Death — right side, straddling the hero/stats boundary */}
+        <div className="absolute hidden lg:block right-[13%] xl:right-[14%] bottom-24 pointer-events-none select-none z-10" aria-hidden>
+          <div className="absolute bottom-[34%] left-1/2 -translate-x-1/2 w-28 h-6 rounded-full bg-black/70 blur-lg" />
+          <Image
+            src="/Death.webp"
+            alt=""
+            width={220}
+            height={340}
+            priority
+            className="relative z-10 h-auto w-[190px] xl:w-[220px] object-contain drop-shadow-[0_16px_40px_rgba(0,0,0,0.9)]"
+          />
+        </div>
+
         {/* Scroll hint */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-30">
           <span className="text-xs text-slate-400 tracking-widest uppercase">Scroll</span>
@@ -183,7 +197,7 @@ export default function HomeClient() {
       </section>
 
       {/* ── Mini stats bar ── */}
-      <section className="border-y border-white/[0.06] bg-[#1e1c2a]/60 py-5">
+      <section className="relative z-10 border-y border-white/[0.06] bg-[#1e1c2a]/60 py-5">
         <div className="max-w-7xl mx-auto px-4">
           {statsError ? (
             <p className="text-center text-sm text-slate-500">Unable to load stats right now.</p>
