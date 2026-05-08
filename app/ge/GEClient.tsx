@@ -744,6 +744,7 @@ const POLL_MS = 30_000;
 export default function GEClient() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('overview');
+  const [tabMenuOpen, setTabMenuOpen] = useState(false);
   const [transactions, setTx] = useState<Transaction[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -982,7 +983,48 @@ export default function GEClient() {
         </div>
 
         {/* ── Main Navigation ────────────────────────────────────────────── */}
-        <div className="flex items-center gap-1 border-b border-white/[0.06] mb-6">
+        {/* Mobile: dropdown */}
+        <div className="relative sm:hidden mb-6">
+          <button
+            onClick={() => setTabMenuOpen((o) => !o)}
+            className="w-full flex items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-white"
+          >
+            <span className="flex items-center gap-2">
+              {tab === 'prices' && Icons.Prices}
+              {tab === 'overview' && Icons.Overview}
+              {tab === 'trades' && Icons.Trades}
+              {tab === 'offers' && Icons.Offers}
+              {tab === 'prices' ? 'Prices' : tab === 'overview' ? 'Overview' : tab === 'trades' ? `Trades${!loading ? ` (${transactions.length})` : ''}` : `Offers${!loading ? ` (${offers.length})` : ''}`}
+            </span>
+            <svg
+              className={`w-4 h-4 text-neutral-400 transition-transform ${tabMenuOpen ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {tabMenuOpen && (
+            <div className="absolute top-full mt-1 left-0 right-0 z-40 rounded-xl border border-white/10 bg-[#0e0e12] shadow-2xl overflow-hidden">
+              {(['prices', 'overview', 'trades', 'offers'] as Tab[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => { setTab(t); setTabMenuOpen(false); }}
+                  className={`w-full flex items-center gap-2 px-4 py-3 text-sm font-semibold text-left transition ${
+                    tab === t ? 'text-amber-400 bg-amber-500/10' : 'text-neutral-400 hover:text-white hover:bg-white/[0.05]'
+                  }`}
+                >
+                  {t === 'prices' && Icons.Prices}
+                  {t === 'overview' && Icons.Overview}
+                  {t === 'trades' && Icons.Trades}
+                  {t === 'offers' && Icons.Offers}
+                  {t === 'prices' ? 'Prices' : t === 'overview' ? 'Overview' : t === 'trades' ? `Trades${!loading ? ` (${transactions.length})` : ''}` : `Offers${!loading ? ` (${offers.length})` : ''}`}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Desktop: horizontal tabs */}
+        <div className="hidden sm:flex items-center gap-1 border-b border-white/[0.06] mb-6">
           <TabBtn active={tab === 'prices'} onClick={() => setTab('prices')} icon={Icons.Prices}>
             Prices
           </TabBtn>

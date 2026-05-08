@@ -820,21 +820,21 @@ function AchievementRow({
   const n = milestones.length;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 transition hover:bg-white/[0.03]">
-      {/* Icon */}
-      {icon ? (
-        <div className="relative h-6 w-6 shrink-0">
-          <Image src={getSkillIcon(icon)} alt={name} fill className="object-contain" unoptimized />
-        </div>
-      ) : (
-        <div className="h-6 w-6 shrink-0" />
-      )}
-
-      {/* Name */}
-      <span className="w-28 shrink-0 text-sm font-medium text-slate-300">{name}</span>
+    <div className="flex flex-col gap-2 px-3 sm:px-4 py-2 sm:py-3 transition hover:bg-white/[0.03]">
+      {/* Icon + Name */}
+      <div className="flex items-center gap-2 min-w-0">
+        {icon ? (
+          <div className="relative h-5 w-5 sm:h-6 sm:w-6 shrink-0">
+            <Image src={getSkillIcon(icon)} alt={name} fill className="object-contain" unoptimized />
+          </div>
+        ) : (
+          <div className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
+        )}
+        <span className="min-w-0 flex-1 truncate text-xs sm:text-sm font-medium text-slate-300">{name}</span>
+      </div>
 
       {/* Track */}
-      <div className="relative flex-1">
+      <div className="relative flex-1 w-full">
         {/* Base track */}
         <div className="h-[3px] w-full rounded-full bg-white/[0.06]" />
         {/* Fill */}
@@ -843,29 +843,31 @@ function AchievementRow({
           style={{ width: `${pct}%` }}
         />
         {/* Milestone dots */}
-        {milestones.map((m, i) => {
-          const pos = (i / (n - 1)) * 100;
-          const reached = current >= m.value;
-          return (
-            <div
-              key={m.label}
-              className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
-              style={{ left: `${pos}%` }}
-            >
+        <div className="relative h-8 mt-1 overflow-visible">
+          {milestones.map((m, i) => {
+            const pos = (i / (n - 1)) * 100;
+            const reached = current >= m.value;
+            return (
               <div
-                className={[
-                  'flex h-[22px] min-w-[28px] items-center justify-center rounded-full border px-1.5',
-                  'text-[10px] font-bold tabular-nums transition-colors',
-                  reached
-                    ? 'border-emerald-500 bg-emerald-500/20 text-white'
-                    : 'border-white/10 bg-[hsl(220_23%_9%)] text-slate-500',
-                ].join(' ')}
+                key={m.label}
+                className="absolute top-0 -translate-x-1/2"
+                style={{ left: `${pos}%` }}
               >
-                {m.label}
+                <div
+                  className={[
+                    'flex h-5 sm:h-[22px] min-w-[24px] sm:min-w-[28px] items-center justify-center rounded-full border px-1 sm:px-1.5',
+                    'text-[9px] sm:text-[10px] font-bold tabular-nums transition-colors whitespace-nowrap',
+                    reached
+                      ? 'border-emerald-500 bg-emerald-500/20 text-white'
+                      : 'border-white/10 bg-[hsl(220_23%_9%)] text-slate-500',
+                  ].join(' ')}
+                >
+                  {m.label}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -938,15 +940,15 @@ function AchievementProgress({ skills, username }: { skills: SkillData[]; userna
   const displayRecent = [...recentAchievements, ...untrackedNinetyNines].slice(0, 5);
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
+    <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-[1fr_280px]">
 
       {/* ── Left: Achievement Progress bars ──────────────────────────────── */}
       <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03]">
-        <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-white/5 px-3 sm:px-4 py-2 sm:py-3">
           <span className="text-base">🏆</span>
           <h2 className="text-sm font-semibold text-slate-200">Achievement Progress</h2>
         </div>
-        <div className="divide-y divide-white/[0.04] py-2">
+        <div className="divide-y divide-white/[0.04] py-1 sm:py-2">
           {/* Overall XP track */}
           <AchievementRow
             icon="Stats_icon"
@@ -977,42 +979,42 @@ function AchievementProgress({ skills, username }: { skills: SkillData[]; userna
       </div>
 
       {/* ── Right: Recent / Nearest / Legacy panels ───────────────────────── */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
 
         {/* Recent skill achievements */}
         <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03]">
-          <div className="border-b border-white/5 px-4 py-3">
+          <div className="border-b border-white/5 px-3 sm:px-4 py-2 sm:py-3">
             <h3 className="text-sm font-semibold text-slate-200">Recent skill achievements</h3>
           </div>
           {achLoading ? (
-            <div className="divide-y divide-white/[0.04] py-2">
+            <div className="divide-y divide-white/[0.04] py-1 sm:py-2">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="mx-4 my-2 h-10 animate-pulse rounded-lg bg-white/5" style={{ animationDelay: `${i * 60}ms` }} />
+                <div key={i} className="mx-2 sm:mx-4 my-1 sm:my-2 h-8 sm:h-10 animate-pulse rounded-lg bg-white/5" style={{ animationDelay: `${i * 60}ms` }} />
               ))}
             </div>
           ) : displayRecent.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-slate-500">No level 99s yet.</p>
+            <p className="px-3 sm:px-4 py-4 sm:py-6 text-center text-xs text-slate-500">No level 99s yet.</p>
           ) : (
             <div className="divide-y divide-white/[0.04]">
               {displayRecent.map((ach) => {
                 const skillMeta = SKILLS.find((s) => s.id === ach.skillId);
                 return (
-                  <div key={ach.key} className="flex items-center gap-3 px-4 py-3 transition hover:bg-white/[0.03]">
+                  <div key={ach.key} className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 transition hover:bg-white/[0.03] min-w-0">
                     {skillMeta ? (
-                      <div className="relative h-6 w-6 shrink-0">
+                      <div className="relative h-5 w-5 sm:h-6 sm:w-6 shrink-0">
                         <Image src={getSkillIcon(skillMeta.icon)} alt={skillMeta.name} fill className="object-contain" unoptimized />
                       </div>
                     ) : (
-                      <div className="h-6 w-6 shrink-0" />
+                      <div className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-200">{ach.label}</p>
+                      <p className="text-xs sm:text-sm font-semibold text-slate-200 truncate">{ach.label}</p>
                       {ach.completedAt ? (
-                        <p className="text-[11px] text-slate-500">
+                        <p className="text-[10px] sm:text-[11px] text-slate-500">
                           {new Date(ach.completedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
                       ) : (
-                        <p className="text-[11px] text-slate-600">Date not tracked</p>
+                        <p className="text-[10px] sm:text-[11px] text-slate-600">Date not tracked</p>
                       )}
                     </div>
                   </div>
@@ -1024,45 +1026,45 @@ function AchievementProgress({ skills, username }: { skills: SkillData[]; userna
 
         {/* Recent Level-Ups (from tracker) */}
         <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03]">
-          <div className="border-b border-white/5 px-4 py-3">
+          <div className="border-b border-white/5 px-3 sm:px-4 py-2 sm:py-3">
             <h3 className="text-sm font-semibold text-slate-200">Recent level-ups</h3>
           </div>
           {milestonesLoading ? (
-            <div className="divide-y divide-white/[0.04] py-2">
+            <div className="divide-y divide-white/[0.04] py-1 sm:py-2">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="mx-4 my-2 h-10 animate-pulse rounded-lg bg-white/5" style={{ animationDelay: `${i * 60}ms` }} />
+                <div key={i} className="mx-2 sm:mx-4 my-1 sm:my-2 h-8 sm:h-10 animate-pulse rounded-lg bg-white/5" style={{ animationDelay: `${i * 60}ms` }} />
               ))}
             </div>
           ) : !milestonesData?.milestones?.length ? (
-            <p className="px-4 py-6 text-center text-xs text-slate-500">No level-ups recorded yet.</p>
+            <p className="px-3 sm:px-4 py-4 sm:py-6 text-center text-xs text-slate-500">No level-ups recorded yet.</p>
           ) : (
             <div className="divide-y divide-white/[0.04]">
               {milestonesData.milestones.map((m) => {
                 const skillMeta = SKILLS.find((s) => s.id === m.skill_id);
                 return (
-                  <div key={m.id} className="flex items-center gap-3 px-4 py-3 transition hover:bg-white/[0.03]">
+                  <div key={m.id} className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 transition hover:bg-white/[0.03] min-w-0">
                     {skillMeta ? (
-                      <div className="relative h-6 w-6 shrink-0">
+                      <div className="relative h-5 w-5 sm:h-6 sm:w-6 shrink-0">
                         <Image src={getSkillIcon(skillMeta.icon)} alt={m.skill_name} fill className="object-contain" unoptimized />
                       </div>
                     ) : (
-                      <div className="h-6 w-6 shrink-0" />
+                      <div className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-200">
+                      <p className="text-xs sm:text-sm font-semibold text-slate-200 truncate">
                         {m.skill_name}
-                        <span className="ml-1.5 text-slate-500 font-normal text-xs">
+                        <span className="ml-1 text-slate-500 font-normal text-[10px] sm:text-xs">
                           {m.old_level} → <span className={m.new_level >= 99 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-semibold'}>{m.new_level}</span>
                         </span>
                       </p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[10px] sm:text-[11px] text-slate-500">
                         {new Date(m.achieved_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                         {' · '}
                         {formatXp(m.xp)} xp
                       </p>
                     </div>
                     {m.new_level >= 99 && (
-                      <span className="shrink-0 text-[11px] font-bold text-amber-400 border border-amber-500/30 bg-amber-500/10 rounded-full px-2 py-0.5">99</span>
+                      <span className="shrink-0 text-[10px] sm:text-[11px] font-bold text-amber-400 border border-amber-500/30 bg-amber-500/10 rounded-full px-1.5 sm:px-2 py-0.5">99</span>
                     )}
                   </div>
                 );
@@ -1073,30 +1075,30 @@ function AchievementProgress({ skills, username }: { skills: SkillData[]; userna
 
         {/* Nearest skill achievements */}
         <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03]">
-          <div className="border-b border-white/5 px-4 py-3">
+          <div className="border-b border-white/5 px-3 sm:px-4 py-2 sm:py-3">
             <h3 className="text-sm font-semibold text-slate-200">Nearest skill achievements</h3>
           </div>          {nearestGoals.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-slate-500">All goals completed!</p>
+            <p className="px-3 sm:px-4 py-4 sm:py-6 text-center text-xs text-slate-500">All goals completed!</p>
           ) : (
             <div className="divide-y divide-white/[0.04]">
               {nearestGoals.map((goal) => (
-                <div key={goal.label} className="flex items-center gap-3 px-4 py-3 transition hover:bg-white/[0.03]">
+                <div key={goal.label} className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 transition hover:bg-white/[0.03] min-w-0">
                   {goal.icon ? (
-                    <div className="relative h-6 w-6 shrink-0">
+                    <div className="relative h-5 w-5 sm:h-6 sm:w-6 shrink-0">
                       <Image src={getSkillIcon(goal.icon)} alt={goal.label} fill className="object-contain" unoptimized />
                     </div>
                   ) : (
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center">
-                      <svg className="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <div className="flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center">
+                      <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 6h18M3 14h12M3 18h8" />
                       </svg>
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-200">{goal.label}</p>
-                    <p className="text-[11px] text-slate-500">{fmtXpLeft(goal.xpLeft)} left</p>
+                    <p className="text-xs sm:text-sm font-semibold text-slate-200 truncate">{goal.label}</p>
+                    <p className="text-[10px] sm:text-[11px] text-slate-500">{fmtXpLeft(goal.xpLeft)} left</p>
                   </div>
-                  <CircularProgress pct={goal.pct} />
+                  <CircularProgress pct={goal.pct} size={40} />
                 </div>
               ))}
             </div>
@@ -1414,6 +1416,7 @@ function PlayerGroupsPanel({
 
 export default function PlayerPageClient({ username, isOwner }: { username: string; isOwner: boolean }) {
   const [tab, setTab] = useState<'skills' | 'achievements' | 'gains' | 'records' | 'groups' | 'screenshot'>('skills');
+  const [tabMenuOpen, setTabMenuOpen] = useState(false);
   const [gainPeriod, setGainPeriod] = useState<'day' | 'week' | 'month' | 'all'>('week');
   const [screenshots, setScreenshots] = useState<Array<{ id: string; public_url: string; created_at: string }> | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -1709,7 +1712,40 @@ export default function PlayerPageClient({ username, isOwner }: { username: stri
       </div>
 
       {/* ── Tabs ──────────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 rounded-xl border border-white/5 bg-white/[0.03] p-1">
+      {/* Mobile: hamburger dropdown */}
+      <div className="relative sm:hidden">
+        <button
+          onClick={() => setTabMenuOpen((o) => !o)}
+          className="w-full flex items-center justify-between gap-2 rounded-xl border border-white/5 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-white"
+        >
+          <span>{TABS.find((t) => t.key === tab)?.label ?? 'Menu'}</span>
+          <svg
+            className={`w-4 h-4 text-slate-400 transition-transform ${tabMenuOpen ? 'rotate-180' : ''}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {tabMenuOpen && (
+          <div className="absolute top-full mt-1 left-0 right-0 z-40 rounded-xl border border-white/10 bg-[#17151f] shadow-2xl overflow-hidden">
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => { setTab(t.key); setTabMenuOpen(false); }}
+                className={`w-full flex items-center px-4 py-3 text-sm font-medium text-left transition ${
+                  tab === t.key
+                    ? 'text-sky-400 bg-sky-500/10'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Desktop: horizontal tabs */}
+      <div className="hidden sm:flex gap-1 rounded-xl border border-white/5 bg-white/[0.03] p-1">
         {TABS.map((t) => (
           <button
             key={t.key}

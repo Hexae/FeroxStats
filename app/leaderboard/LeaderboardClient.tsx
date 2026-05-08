@@ -88,20 +88,24 @@ export default function LeaderboardClient() {
       </div>
 
       {/* Header row: selected skill + game mode filter */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2.5 min-w-0">
           <Image
             src={getSkillIcon(selectedSkill.icon)}
             alt={selectedSkill.name}
             width={28}
             height={28}
-            className="w-7 h-7 object-contain"
+            className="w-6 sm:w-7 h-6 sm:h-7 object-contain shrink-0"
             unoptimized
           />
-          <span className="text-lg font-bold text-white">{selectedSkill.name}</span>
-          <span className="text-xs text-slate-500 font-medium uppercase tracking-widest">Hiscores</span>
+          <div className="min-w-0">
+            <span className="text-base sm:text-lg font-bold text-white block truncate">{selectedSkill.name}</span>
+            <span className="text-[10px] sm:text-xs text-slate-500 font-medium uppercase tracking-widest">Hiscores</span>
+          </div>
         </div>
-        <GameModeSelect value={gameModeFilter} onChange={setGameModeFilter} includeAll />
+        <div className="w-full sm:w-auto">
+          <GameModeSelect value={gameModeFilter} onChange={setGameModeFilter} includeAll />
+        </div>
       </div>
 
       {/* Table */}
