@@ -112,20 +112,21 @@ export default function ItemPageClient({ name }: { name: string }) {
     const fp = start ? priceHistory.filter(p => new Date(p.sampled_at) >= start) : priceHistory;
     // Keep true transactions plus normal offer BUY/SELL rows, but exclude corrupted
     // offer-side TRANSACTION aggregates that explode prices.
-    const marketRows = fh.filter(
+    // Completed transactions only – used for stats and chart
+    const transactionRows = fh.filter(
       h =>
         h.quantity > 0 &&
         h.total_value > 0 &&
-        (h.source === 'transaction' || (h.source === 'offer' && (h.type === 'BUY' || h.type === 'SELL')))
+        (h.source === 'transaction' || h.type === 'TRANSACTION')
     );
-    
-    // Calculate stats
-    const validPrices = marketRows.map(h => Math.round(h.total_value / h.quantity)).filter(p => p > 0);
+
+    // Calculate stats from transactions only
+    const validPrices = transactionRows.map(h => Math.round(h.total_value / h.quantity)).filter(p => p > 0);
     const avgPrice = validPrices.length ? Math.round(validPrices.reduce((a, b) => a + b, 0) / validPrices.length) : 0;
     const minPrice = validPrices.length ? Math.min(...validPrices) : 0;
     const maxPrice = validPrices.length ? Math.max(...validPrices) : 0;
-    const totalVol = marketRows.reduce((s, h) => s + h.total_value, 0);
-    const totalQty = marketRows.reduce((s, h) => s + h.quantity, 0);
+    const totalVol = transactionRows.reduce((s, h) => s + h.total_value, 0);
+    const totalQty = transactionRows.reduce((s, h) => s + h.quantity, 0);
     const buyVol   = fh.filter(h => h.type === 'BUY').reduce((s, h)  => s + h.quantity, 0);
     const sellVol  = fh.filter(h => h.type === 'SELL').reduce((s, h) => s + h.quantity, 0);
 
@@ -136,13 +137,6 @@ export default function ItemPageClient({ name }: { name: string }) {
     const bucketMinutes = range === '1W' ? 60 * 4 : range === '1M' ? 60 * 12 : range === '3M' ? 60 * 24 : 60 * 48;
     const bucketMs = bucketMinutes * 60_000;
     const txBuckets = new Map<number, number[]>();
-
-    const transactionRows = fh.filter(
-      h =>
-        h.quantity > 0 &&
-        h.total_value > 0 &&
-        (h.source === 'transaction' || h.type === 'TRANSACTION')
-    );
 
     for (const tx of transactionRows) {
       if (tx.quantity <= 0 || tx.total_value <= 0) continue;
