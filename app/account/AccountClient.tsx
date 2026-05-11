@@ -362,6 +362,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
   async function handleReauth(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
+
     setReauthLoading(true);
     const res = await fetch('/api/account/reauth', {
       method: 'POST',
@@ -376,6 +377,13 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
     }
     setReauthPassword('');
     setReauthUntil(json.validUntil);
+    if (json.via === 'active-session') {
+      setMsg({
+        type: 'ok',
+        text: `Identity verified from your active signed-in session for ${REAUTH_WINDOW_MINUTES} minutes.`,
+      });
+      return;
+    }
     setMsg({ type: 'ok', text: `Identity verified for ${REAUTH_WINDOW_MINUTES} minutes.` });
   }
 
@@ -686,18 +694,19 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
   ];
 
   return (
-    <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-8 animate-fade-up">
+    <main className="relative flex-1 w-full max-w-4xl mx-auto px-4 py-8 animate-fade-up overflow-hidden">
+      <div className="relative z-10">
       {/* Status message */}
       {msg && (
-        <div className={`mb-5 px-4 py-3 rounded-xl text-sm border ${
+        <div className={`mb-5 px-4 py-3 rounded-xl text-sm border shadow-lg backdrop-blur-sm ${
           msg.type === 'ok'
-            ? 'bg-green-500/10 border-green-500/20 text-green-400'
-            : 'bg-red-500/10 border-red-500/20 text-red-400'
+            ? 'bg-green-500/15 border-green-400/35 text-green-300'
+            : 'bg-red-500/15 border-red-400/35 text-red-300'
         }`}>{msg.text}</div>
       )}
 
       {/* Account header card */}
-      <div className="bg-[#1a1826] border border-white/[0.07] rounded-2xl p-5 mb-5 flex flex-wrap items-center gap-4">
+      <div className="bg-gradient-to-br from-[#201b30] via-[#1b1829] to-[#161323] border border-white/[0.10] rounded-2xl p-5 mb-5 flex flex-wrap items-center gap-4 shadow-2xl shadow-black/30">
         <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-800 flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-emerald-900/30 shrink-0 select-none">
           {user.email.charAt(0).toUpperCase()}
         </div>
@@ -737,15 +746,15 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
       </div>
 
       {/* Tab navigation */}
-      <div className="flex gap-1 bg-[#13111e] border border-white/[0.06] rounded-xl p-1 mb-6">
+      <div className="flex gap-1 bg-[#100e1a]/90 border border-white/[0.12] rounded-xl p-1.5 mb-6 backdrop-blur-md shadow-xl shadow-black/25">
         {tabList.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 text-xs font-semibold py-2 px-3 rounded-lg transition-all capitalize ${
+            className={`flex-1 text-xs font-semibold py-2.5 px-3 rounded-lg transition-all capitalize ${
               activeTab === tab.id
-                ? 'bg-[#1e1c2a] text-white shadow-sm border border-white/[0.08]'
-                : 'text-slate-500 hover:text-slate-300'
+                ? 'bg-gradient-to-b from-[#29243b] to-[#211d30] text-white shadow-md border border-white/[0.14]'
+                : 'text-slate-500 hover:text-slate-200 hover:bg-white/[0.03]'
             }`}
           >
             {tab.label}
@@ -761,7 +770,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
       {claimedPlayer ? (
         <>
         {/* Player info card */}
-        <div className="bg-[#1a1826] border border-white/[0.07] rounded-2xl p-5 shadow-xl">
+        <div className="bg-gradient-to-br from-[#1f1b30] via-[#1b1829] to-[#171425] border border-white/[0.10] rounded-2xl p-5 shadow-xl shadow-black/25">
           <div className="flex items-center gap-4 mb-5">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-900 flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-emerald-900/40 shrink-0 select-none">
               {claimedPlayer.display_name.charAt(0).toUpperCase()}
@@ -798,19 +807,19 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-5">
-            <div className="bg-[#13111e] rounded-xl px-3 py-3">
+            <div className="bg-[#13111e] border border-white/[0.08] rounded-xl px-3 py-3 shadow-inner shadow-black/30">
               <p className="text-xl font-extrabold text-white">{formatNumber(claimedPlayer.total_level)}</p>
               <p className="text-[11px] text-slate-500 mt-0.5">Total Level</p>
             </div>
-            <div className="bg-[#13111e] rounded-xl px-3 py-3">
+            <div className="bg-[#13111e] border border-white/[0.08] rounded-xl px-3 py-3 shadow-inner shadow-black/30">
               <p className="text-xl font-extrabold text-white">{claimedPlayer.overall_rank > 0 ? `#${formatNumber(claimedPlayer.overall_rank)}` : '—'}</p>
               <p className="text-[11px] text-slate-500 mt-0.5">Server Rank</p>
             </div>
-            <div className="bg-[#13111e] rounded-xl px-3 py-3">
+            <div className="bg-[#13111e] border border-white/[0.08] rounded-xl px-3 py-3 shadow-inner shadow-black/30">
               <p className="text-xl font-extrabold text-white">{formatNumber(claimedPlayer.total_xp)}</p>
               <p className="text-[11px] text-slate-500 mt-0.5">Total XP</p>
             </div>
-            <div className="bg-[#13111e] rounded-xl px-3 py-3">
+            <div className="bg-[#13111e] border border-white/[0.08] rounded-xl px-3 py-3 shadow-inner shadow-black/30">
               <p className="text-xl font-extrabold text-white">{gm.combatXp}x / {gm.skillingXp}x</p>
               <p className="text-[11px] text-slate-500 mt-0.5">XP Rates</p>
             </div>
@@ -922,7 +931,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
         </div>
 
         {/* Danger zone */}
-        <div className="bg-[#1a1826] border border-red-500/15 rounded-2xl p-5 shadow-xl">
+        <div className="bg-gradient-to-br from-[#211729] via-[#1b1522] to-[#19121d] border border-red-400/25 rounded-2xl p-5 shadow-xl shadow-black/25">
           <p className="text-xs font-semibold text-red-400/80 uppercase tracking-widest mb-3">Danger Zone</p>
           {!showUnclaimConfirm ? (
             <div className="flex items-center justify-between">
@@ -970,7 +979,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
         </>
       ) : (
         /* Claim form */
-        <div className="bg-[#1a1826] border border-white/[0.07] rounded-2xl p-5 shadow-xl">
+        <div className="bg-gradient-to-br from-[#1f1b30] via-[#1b1829] to-[#171425] border border-white/[0.10] rounded-2xl p-5 shadow-xl shadow-black/25">
           <h2 className="text-base font-bold text-white mb-1">Link Your Profile</h2>
           <p className="text-xs text-slate-500 mb-4">
             Link your Ferox.ps username to this account to set your game mode badge.
@@ -1073,36 +1082,50 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
       <div className="space-y-4">
 
       {/* Security Center */}
-      <section className="bg-[#1a1826] border border-white/[0.07] rounded-2xl p-5 shadow-xl">
+      <section className="bg-gradient-to-br from-[#1f1b30] via-[#1b1829] to-[#171425] border border-white/[0.10] rounded-2xl p-5 shadow-xl shadow-black/25">
         <h2 className="text-sm font-bold text-white mb-4">Security Center</h2>
 
-        <div className="rounded-xl border border-white/[0.08] bg-[#17151f] p-4 mb-4">
-          <p className="text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">Step-Up Verification</p>
-          <p className="text-xs text-slate-500 mb-3">
+        <div className="rounded-xl border border-white/[0.12] bg-gradient-to-br from-[#1b1828] to-[#141120] p-4 mb-4 shadow-lg shadow-black/20">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <p className="text-xs font-semibold text-slate-200 uppercase tracking-wider">Step-Up Verification</p>
+            <span
+              className={[
+                'inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider',
+                reauthActive
+                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                  : 'border-amber-500/40 bg-amber-500/10 text-amber-300',
+              ].join(' ')}
+            >
+              {reauthActive ? 'Verified' : 'Verification Needed'}
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mb-3">
             {reauthActive
               ? `Verified until ${new Date(reauthUntil ?? '').toLocaleTimeString()}`
               : 'Sensitive actions require password verification.'}
           </p>
-          <form onSubmit={handleReauth} className="flex flex-wrap items-center gap-2">
-            <input
-              type="password"
-              value={reauthPassword}
-              onChange={(e) => setReauthPassword(e.target.value)}
-              placeholder="Current password"
-              className="bg-[#0f0d17] border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50"
-            />
-            <button
-              type="submit"
-              disabled={reauthLoading || !reauthPassword.trim()}
-              className="text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 disabled:opacity-60 text-white px-3 py-2 rounded-lg transition-colors"
-            >
-              {reauthLoading ? 'Verifying…' : 'Verify Password'}
-            </button>
+          <form onSubmit={handleReauth} className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="password"
+                value={reauthPassword}
+                onChange={(e) => setReauthPassword(e.target.value)}
+                placeholder="Current password"
+                className="min-w-[240px] flex-1 bg-[#0f0d17] border border-white/[0.1] rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50"
+              />
+              <button
+                type="submit"
+                disabled={reauthLoading || !reauthPassword.trim()}
+                className="text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 disabled:opacity-60 text-white px-3 py-2 rounded-lg transition-colors"
+              >
+                {reauthLoading ? 'Verifying…' : 'Verify Password'}
+              </button>
+            </div>
           </form>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-          <div className="rounded-xl border border-white/[0.08] bg-[#17151f] p-4">
+          <div className="rounded-xl border border-white/[0.10] bg-[#17151f]/95 p-4 shadow-inner shadow-black/20">
             <p className="text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">Change Email</p>
             <input
               type="email"
@@ -1120,7 +1143,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
             </button>
           </div>
 
-          <div className="rounded-xl border border-white/[0.08] bg-[#17151f] p-4">
+          <div className="rounded-xl border border-white/[0.10] bg-[#17151f]/95 p-4 shadow-inner shadow-black/20">
             <p className="text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">Reset Password</p>
             <p className="text-xs text-slate-500 mb-2">
               Send a reset link and complete the password update from the email flow.
@@ -1136,7 +1159,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
           </div>
         </div>
 
-        <div className="rounded-xl border border-white/[0.08] bg-[#17151f] p-4 mb-4">
+        <div className="rounded-xl border border-white/[0.10] bg-[#17151f]/95 p-4 mb-4 shadow-inner shadow-black/20">
           <p className="text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">Multi-Factor Authentication</p>
           {mfaError && <p className="text-xs text-red-400 mb-2">{mfaError}</p>}
           {mfaFactors.length > 0 ? (
@@ -1200,7 +1223,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
           )}
         </div>
 
-        <div className="rounded-xl border border-white/[0.08] bg-[#17151f] p-4">
+        <div className="rounded-xl border border-white/[0.10] bg-[#17151f]/95 p-4 shadow-inner shadow-black/20">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Active Sessions</p>
             <button
@@ -1249,7 +1272,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
       <div className="space-y-4">
 
       {/* Preferences */}
-      <section className="bg-[#1a1826] border border-white/[0.07] rounded-2xl p-5 shadow-xl">
+      <section className="bg-gradient-to-br from-[#1f1b30] via-[#1b1829] to-[#171425] border border-white/[0.10] rounded-2xl p-5 shadow-xl shadow-black/25">
         <h2 className="text-sm font-bold text-white mb-4">Preferences & Notifications</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -1302,7 +1325,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
           </label>
         </div>
 
-        <div className="rounded-xl border border-white/[0.08] bg-[#17151f] p-4 mb-4">
+        <div className="rounded-xl border border-white/[0.10] bg-[#17151f]/95 p-4 mb-4 shadow-inner shadow-black/20">
           <p className="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">Notifications</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-300">
             <label className="flex items-center gap-2">
@@ -1372,7 +1395,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
 
       {/* Media Manager */}
       {claimedPlayer && (
-        <section className="bg-[#1a1826] border border-white/[0.07] rounded-2xl p-5 shadow-xl">
+        <section className="bg-gradient-to-br from-[#1f1b30] via-[#1b1829] to-[#171425] border border-white/[0.10] rounded-2xl p-5 shadow-xl shadow-black/25">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="text-sm font-bold text-white">Media Manager</h2>
             <label className={`text-xs font-semibold bg-sky-700 hover:bg-sky-600 text-white px-3 py-2 rounded-lg transition-colors cursor-pointer ${mediaLoading ? 'opacity-60 pointer-events-none' : ''}`}>
@@ -1403,7 +1426,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {media.map((item, index) => (
-                <div key={item.id} className="rounded-xl border border-white/[0.08] bg-[#17151f] overflow-hidden">
+                <div key={item.id} className="rounded-xl border border-white/[0.10] bg-[#17151f]/95 overflow-hidden shadow-lg shadow-black/20">
                   <div className="relative aspect-video">
                     <Image
                       src={item.public_url}
@@ -1462,6 +1485,7 @@ export default function AccountClient({ user, claimedPlayer, profile, isAdmin }:
       </div>
       )} {/* end media tab */}
 
+      </div>
     </main>
   );
 }
