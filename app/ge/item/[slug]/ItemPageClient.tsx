@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import {
   Chart as ChartJS,
@@ -18,6 +19,28 @@ ChartJS.register(LineElement, PointElement, LinearScale, Tooltip, Filler, Catego
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
+type SortCol = 'type' | 'quantity' | 'price_each' | 'total_value' | 'traded_at';
+
+function SortIcon({ col, sortCol, sortDir }: { col: SortCol; sortCol: SortCol; sortDir: 'asc' | 'desc' }) {
+  if (sortCol !== col)
+    return (
+      <svg className="w-3 h-3 opacity-25 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
+      </svg>
+    );
+  return (
+    <svg className="w-3 h-3 opacity-80 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {sortDir === 'asc' ? (
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+      ) : (
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+      )}
+    </svg>
+  );
+}
+
+// ── Types (continued) ─────────────────────────────────────────────────────
+
 interface HistoryRow {
   id: number;
   source: 'transaction' | 'offer';
@@ -28,11 +51,18 @@ interface HistoryRow {
   traded_at: string;
 }
 
-interface PriceHistoryRow {
-  id: number;
-  item_id: number;
-  price: number;
-  sampled_at: string;
+interface GeTrackerStatus {
+  status: string | null;
+  lastSeen: string | null;
+  intervalSec: number | null;
+  nextRunAt: string | null;
+  remainingSec: number | null;
+}
+
+interface StatusApiResponse {
+  tracker?: {
+    ge?: GeTrackerStatus;
+  };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -55,6 +85,13 @@ function timeAgo(iso: string, referenceTime: number): string {
   return `${days}d ago`;
 }
 
+function formatDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins <= 0) return `${secs}s`;
+  return `${mins}m ${secs.toString().padStart(2, '0')}s`;
+}
+
 // ── Range helpers ─────────────────────────────────────────────────────────
 
 const RANGES = ['1W', '1M', '3M', 'All'] as const;
@@ -67,51 +104,101 @@ function rangeStart(r: Range, now: number): Date | null {
   return null;
 }
 
+// ── Constants ────────────────────────────────────────────────────────────
+
+const PAGE_SIZE  = 50;
+
 // ── Main component ────────────────────────────────────────────────────────
 
 export default function ItemPageClient({ name }: { name: string }) {
   const router = useRouter();
 
-  const [history, setHistory] = useState<HistoryRow[]>([]);
-  const [priceHistory, setPriceHistory] = useState<PriceHistoryRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState<Range>('All');
-  const [tab, setTab] = useState<'all' | 'offers' | 'trades'>('all');
-  const [lastRefresh, setLastRefresh] = useState(() => Date.now());
+  const [history, setHistory]         = useState<HistoryRow[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [range, setRange]               = useState<Range>('All');
+  const [tab, setTab]                   = useState<'all' | 'offers' | 'trades'>('all');
+  const [lastRefresh, setLastRefresh]   = useState(() => Date.now());
+  const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
+  const [sortCol, setSortCol]           = useState<SortCol>('traded_at');
+  const [sortDir, setSortDir]           = useState<'asc' | 'desc'>('desc');
+  const [copiedKey, setCopiedKey]       = useState<string | null>(null);
+  const [geTracker, setGeTracker]       = useState<GeTrackerStatus | null>(null);
+  const [nowMs, setNowMs]               = useState(() => Date.now());
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
       try {
-        const [tradeRes, priceRes] = await Promise.all([
-          fetch(`/api/ge/item?name=` + encodeURIComponent(name) + `&limit=10000`),
-          fetch(`/api/ge/item/price-history?name=` + encodeURIComponent(name) + `&limit=10000`),
-        ]);
-        const [tradeData, priceData] = await Promise.all([tradeRes.json(), priceRes.json()]);
+        const tradeRes  = await fetch(`/api/ge/item?name=` + encodeURIComponent(name) + `&limit=10000`);
+        const tradeData = await tradeRes.json();
         if (!cancelled) {
           setHistory(tradeData.history ?? []);
-          setPriceHistory(priceData.prices ?? []);
           setLastRefresh(Date.now());
         }
       } catch {
-        if (!cancelled) { setHistory([]); setPriceHistory([]); }
+        if (!cancelled) setHistory([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [name]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadStatus() {
+      try {
+        const res = await fetch('/api/status', { cache: 'no-store' });
+        const data = (await res.json()) as StatusApiResponse;
+        if (!cancelled) {
+          setGeTracker(data.tracker?.ge ?? null);
+        }
+      } catch {
+        if (!cancelled) {
+          setGeTracker(null);
+        }
+      }
+    }
+
+    loadStatus();
+    const statusInterval = setInterval(loadStatus, 30_000);
+    const tick = setInterval(() => setNowMs(Date.now()), 1000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(statusInterval);
+      clearInterval(tick);
+    };
+  }, []);
+
+  function handleSort(col: SortCol) {
+    if (sortCol === col) {
+      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortCol(col);
+      setSortDir('desc');
+    }
+  }
+
+  function copyToClipboard(key: string, value: string) {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 1500);
+    });
+  }
+
+  // ── Derived state ─────────────────────────────────────────────────────────
 
   // Derived state with useMemo to enforce purity
   const { filteredHistory, chartData, chartTrendPct, chartTrendUp, stats, displayRecords } = useMemo(() => {
     const start = rangeStart(range, lastRefresh);
     
     const fh = start ? history.filter(h => new Date(h.traded_at) >= start) : history;
-    const fp = start ? priceHistory.filter(p => new Date(p.sampled_at) >= start) : priceHistory;
-    // Keep true transactions plus normal offer BUY/SELL rows, but exclude corrupted
-    // offer-side TRANSACTION aggregates that explode prices.
     // Completed transactions only – used for stats and chart
     const transactionRows = fh.filter(
       h =>
@@ -129,6 +216,15 @@ export default function ItemPageClient({ name }: { name: string }) {
     const totalQty = transactionRows.reduce((s, h) => s + h.quantity, 0);
     const buyVol   = fh.filter(h => h.type === 'BUY').reduce((s, h)  => s + h.quantity, 0);
     const sellVol  = fh.filter(h => h.type === 'SELL').reduce((s, h) => s + h.quantity, 0);
+
+    // Median price
+    const sortedP = [...validPrices].sort((a, b) => a - b);
+    const mid = Math.floor(sortedP.length / 2);
+    const medianPrice = sortedP.length
+      ? sortedP.length % 2 === 0
+        ? Math.round((sortedP[mid - 1] + sortedP[mid]) / 2)
+        : sortedP[mid]
+      : 0;
 
     // Prepare chart data from completed transactions only.
     const labels: string[] = [];
@@ -169,14 +265,19 @@ export default function ItemPageClient({ name }: { name: string }) {
       prices.push(pointPrice);
     }
 
+    // Trend-aware chart colour
+    const trendUp     = prices.length >= 2 && prices[prices.length - 1] >= prices[0];
+    const borderColor = trendUp ? 'rgb(16, 185, 129)' : 'rgb(239, 68, 68)';
+    const bgColor     = trendUp ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)';
+
     const data = {
       labels,
       datasets: [
         {
           label: 'Price',
           data: prices,
-          borderColor: 'rgb(6, 182, 212)',
-          backgroundColor: 'rgba(6, 182, 212, 0.1)',
+          borderColor,
+          backgroundColor: bgColor,
           fill: true,
           tension: 0.3,
           pointRadius: 3,
@@ -205,17 +306,54 @@ export default function ItemPageClient({ name }: { name: string }) {
       chartData: data,
       chartTrendPct,
       chartTrendUp,
-      stats: { avgPrice, minPrice, maxPrice, totalVol, totalQty, buyVol, sellVol },
+      stats: { avgPrice, minPrice, maxPrice, totalVol, totalQty, buyVol, sellVol, medianPrice },
       displayRecords: records
     };
-  }, [history, priceHistory, range, tab, lastRefresh]);
+  }, [history, range, tab, lastRefresh]);
+
+  // Sorted table records
+  const sortedRecords = useMemo(() => {
+    return [...displayRecords].sort((a, b) => {
+      let av: string | number, bv: string | number;
+      switch (sortCol) {
+        case 'type':        av = a.type ?? a.source; bv = b.type ?? b.source; break;
+        case 'quantity':    av = a.quantity;          bv = b.quantity;         break;
+        case 'price_each':  av = a.price_each;        bv = b.price_each;       break;
+        case 'total_value': av = a.total_value;       bv = b.total_value;      break;
+        case 'traded_at':   av = a.traded_at;         bv = b.traded_at;        break;
+        default:            return 0;
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1  : -1;
+      return 0;
+    });
+  }, [displayRecords, sortCol, sortDir]);
 
   function getStatCards() {
+    const spread =
+      stats.minPrice && stats.maxPrice
+        ? `Spread: ${(((stats.maxPrice - stats.minPrice) / stats.minPrice) * 100).toFixed(1)}%`
+        : undefined;
     return [
-      { label: 'Average Price',  value: formatGp(stats.avgPrice), color: 'text-white border-white/5 bg-white/[0.02]', iconColor: 'text-white/40' },
-      { label: 'Lowest Price',   value: formatGp(stats.minPrice), color: 'text-sky-300 border-sky-500/10 bg-sky-500/5', iconColor: 'text-sky-500/40' },
-      { label: 'Highest Price',  value: formatGp(stats.maxPrice), color: 'text-amber-300 border-amber-500/10 bg-amber-500/5', iconColor: 'text-amber-500/40' },
-      { label: 'Traded Volume',  value: stats.totalQty.toLocaleString(),  color: 'text-emerald-300 border-emerald-500/10 bg-emerald-500/5', iconColor: 'text-emerald-500/40' },
+      {
+        key: 'avg', label: 'Average Price', value: formatGp(stats.avgPrice), raw: stats.avgPrice.toString(),
+        sub: stats.medianPrice ? `Median: ${formatGp(stats.medianPrice)}` : undefined,
+        color: 'text-white border-white/5 bg-white/[0.02]', iconColor: 'text-white/40',
+      },
+      {
+        key: 'low', label: 'Lowest Price', value: formatGp(stats.minPrice), raw: stats.minPrice.toString(),
+        color: 'text-sky-300 border-sky-500/10 bg-sky-500/5', iconColor: 'text-sky-500/40',
+      },
+      {
+        key: 'high', label: 'Highest Price', value: formatGp(stats.maxPrice), raw: stats.maxPrice.toString(),
+        sub: spread,
+        color: 'text-amber-300 border-amber-500/10 bg-amber-500/5', iconColor: 'text-amber-500/40',
+      },
+      {
+        key: 'vol', label: 'Traded Volume', value: stats.totalQty.toLocaleString(), raw: stats.totalQty.toString(),
+        sub: stats.totalVol ? `${formatGp(stats.totalVol)} gp total` : undefined,
+        color: 'text-emerald-300 border-emerald-500/10 bg-emerald-500/5', iconColor: 'text-emerald-500/40',
+      },
     ];
   }
 
@@ -261,7 +399,22 @@ export default function ItemPageClient({ name }: { name: string }) {
     }
   };
 
-  const imageName = name.replace(/ /g, '_').toLowerCase() + '.png';
+  const imageName   = name.replace(/ /g, '_').toLowerCase() + '.png';
+  const totalOffers  = stats.buyVol + stats.sellVol;
+  const buyPct       = totalOffers > 0 ? Math.round((stats.buyVol / totalOffers) * 100) : 50;
+
+  const geLastSeenMs = geTracker?.lastSeen ? new Date(geTracker.lastSeen).getTime() : null;
+  const geIntervalSec = geTracker?.intervalSec ?? null;
+  const remainingSec =
+    geLastSeenMs !== null && geIntervalSec
+      ? Math.max(0, Math.floor((geLastSeenMs + geIntervalSec * 1000 - nowMs) / 1000))
+      : null;
+  const geTrackerLabel = geLastSeenMs
+    ? `Last updated ${timeAgo(new Date(geLastSeenMs).toISOString(), nowMs)}`
+    : 'Last updated time unavailable';
+  const geNextLabel = remainingSec !== null
+    ? (remainingSec > 0 ? `Next tracker run in ${formatDuration(remainingSec)}` : 'Next tracker run due now')
+    : null;
 
   return (
     <main className="flex-1 max-w-5xl mx-auto px-4 py-8 lg:py-12 w-full animate-fade-up">
@@ -321,6 +474,7 @@ export default function ItemPageClient({ name }: { name: string }) {
                     width={56}
                     height={56}
                     className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] z-10 scale-[1.3]"
+                    style={{ width: 'auto', height: 'auto' }}
                     unoptimized
                     onError={(e) => {
                         (e.target as HTMLImageElement).src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
@@ -338,24 +492,48 @@ export default function ItemPageClient({ name }: { name: string }) {
                   <span className="text-sm font-medium text-slate-500">
                     {filteredHistory.length.toLocaleString()} Tracked Samples
                   </span>
+
+                  <Link
+                    href="/status"
+                    className="text-[11px] font-semibold text-slate-500 hover:text-slate-300 transition-colors"
+                    title="Tracker cadence and health from system status"
+                  >
+                    {geTrackerLabel}
+                    {geNextLabel ? ` · ${geNextLabel}` : ''}
+                  </Link>
                 </div>
               </div>
             </div>
 
-            {/* Quick Volumes */}
+            {/* Quick Volumes + Pressure Bar */}
             {(stats.buyVol > 0 || stats.sellVol > 0) && (
-              <div className="flex bg-[#0a0a0e] rounded-xl border border-white/[0.06] shadow-inner divide-x divide-white/[0.04]">
-                <div className="px-5 py-3 flex-1 min-w-[120px]">
-                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5">Demand (Buy)</p>
-                  <p className="text-base font-extrabold text-emerald-400 tabular-nums leading-none">
-                    {stats.buyVol.toLocaleString()}
-                  </p>
+              <div className="flex flex-col bg-[#0a0a0e] rounded-xl border border-white/[0.06] shadow-inner overflow-hidden min-w-[240px]">
+                <div className="flex divide-x divide-white/[0.04]">
+                  <div className="px-5 py-3 flex-1">
+                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5">Demand (Buy)</p>
+                    <p className="text-base font-extrabold text-emerald-400 tabular-nums leading-none">
+                      {stats.buyVol.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="px-5 py-3 flex-1">
+                    <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1.5">Supply (Sell)</p>
+                    <p className="text-base font-extrabold text-amber-400 tabular-nums leading-none">
+                      {stats.sellVol.toLocaleString()}
+                    </p>
+                  </div>
                 </div>
-                <div className="px-5 py-3 flex-1 min-w-[120px]">
-                  <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1.5">Supply (Sell)</p>
-                  <p className="text-base font-extrabold text-amber-400 tabular-nums leading-none">
-                    {stats.sellVol.toLocaleString()}
-                  </p>
+                {/* Buy/Sell pressure bar */}
+                <div className="px-3 pb-2.5">
+                  <div className="flex justify-between text-[9px] font-bold mb-1">
+                    <span className="text-emerald-600">{buyPct}% buy</span>
+                    <span className="text-amber-600">{100 - buyPct}% sell</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-amber-500/25 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-all duration-700"
+                      style={{ width: `${buyPct}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -364,14 +542,27 @@ export default function ItemPageClient({ name }: { name: string }) {
           {/* Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-10">
             {getStatCards().map((s, i) => (
-              <div 
-                key={s.label} 
-                className={`relative overflow-hidden rounded-[20px] px-5 py-4 border backdrop-blur-sm shadow-xl ${s.color}`}
+              <button
+                key={s.key}
+                onClick={() => copyToClipboard(s.key, s.raw)}
+                title="Click to copy value"
+                className={`relative overflow-hidden rounded-[20px] px-5 py-4 border backdrop-blur-sm shadow-xl text-left transition-all active:scale-[0.97] hover:brightness-110 ${s.color}`}
                 style={{ animationDelay: `${i * 50}ms` }}
               >
+                {copiedKey === s.key && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-[20px] z-20 backdrop-blur-sm">
+                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Copied!
+                    </span>
+                  </div>
+                )}
                 <div className="relative z-10">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2 drop-shadow-sm">{s.label}</p>
                   <p className="text-2xl font-black tabular-nums tracking-tight">{s.value}</p>
+                  {s.sub && <p className="text-[10px] text-slate-500 mt-1 font-semibold">{s.sub}</p>}
                 </div>
                 <svg className={`absolute -bottom-4 -right-4 w-24 h-24 stroke-current pointer-events-none opacity-20 ${s.iconColor}`} viewBox="0 0 24 24" fill="none">
                   {i === 0 && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />}
@@ -379,7 +570,7 @@ export default function ItemPageClient({ name }: { name: string }) {
                   {i === 2 && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />}
                   {i === 3 && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />}
                 </svg>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -403,7 +594,7 @@ export default function ItemPageClient({ name }: { name: string }) {
                 {RANGES.map(r => (
                   <button
                     key={r}
-                    onClick={() => setRange(r)}
+                    onClick={() => { setRange(r); setDisplayLimit(PAGE_SIZE); }}
                     className={`px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-wider rounded-lg transition-all ${
                       range === r
                         ? 'bg-emerald-500 text-[#0a0a0e] shadow-[0_0_12px_rgba(16,185,129,0.3)]'
@@ -428,7 +619,7 @@ export default function ItemPageClient({ name }: { name: string }) {
                 {(['all', 'offers', 'trades'] as const).map(t => (
                   <button
                     key={t}
-                    onClick={() => setTab(t)}
+                    onClick={() => { setTab(t); setDisplayLimit(PAGE_SIZE); }}
                     className={`px-5 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all ${
                       tab === t
                         ? 'bg-[#18181f] text-white shadow-[0_4px_12px_rgba(0,0,0,0.5)] border border-white/[0.08]'
@@ -440,20 +631,31 @@ export default function ItemPageClient({ name }: { name: string }) {
                 ))}
               </div>
               <div className="text-xs font-semibold text-neutral-500 bg-white/[0.02] px-3 py-1.5 rounded-lg border border-white/[0.04]">
-                Showing {displayRecords.slice(0, 50).length} of {displayRecords.length} records
+                Showing {Math.min(displayLimit, sortedRecords.length)} of {sortedRecords.length} records
               </div>
             </div>
 
             <div className="rounded-[20px] bg-[#0a0a0e]/40 border border-white/[0.05] overflow-hidden shadow-2xl backdrop-blur-sm">
-              <div className="grid grid-cols-[90px_1fr_1fr_1fr_100px] gap-0 px-6 py-3.5 border-b border-white/[0.06] bg-white/[0.02] text-[10px] font-extrabold uppercase tracking-widest text-slate-500 shadow-sm">
-                <span>Type</span>
-                <span className="text-right">Quantity</span>
-                <span className="text-right">Price Each</span>
-                <span className="text-right">Total Value</span>
-                <span className="text-right">Observed</span>
+              {/* Sortable header */}
+              <div className="grid grid-cols-[90px_1fr_1fr_1fr_100px] gap-0 px-6 py-3.5 border-b border-white/[0.06] bg-white/[0.02] text-[10px] font-extrabold uppercase tracking-widest text-slate-500 shadow-sm select-none">
+                <button onClick={() => handleSort('type')} className="text-left hover:text-slate-300 transition-colors flex items-center">
+                  Type <SortIcon col="type" sortCol={sortCol} sortDir={sortDir} />
+                </button>
+                <button onClick={() => handleSort('quantity')} className="hover:text-slate-300 transition-colors w-full flex items-center justify-end">
+                  Quantity <SortIcon col="quantity" sortCol={sortCol} sortDir={sortDir} />
+                </button>
+                <button onClick={() => handleSort('price_each')} className="hover:text-slate-300 transition-colors w-full flex items-center justify-end">
+                  Price Each <SortIcon col="price_each" sortCol={sortCol} sortDir={sortDir} />
+                </button>
+                <button onClick={() => handleSort('total_value')} className="hover:text-slate-300 transition-colors w-full flex items-center justify-end">
+                  Total Value <SortIcon col="total_value" sortCol={sortCol} sortDir={sortDir} />
+                </button>
+                <button onClick={() => handleSort('traded_at')} className="hover:text-slate-300 transition-colors w-full flex items-center justify-end">
+                  Observed <SortIcon col="traded_at" sortCol={sortCol} sortDir={sortDir} />
+                </button>
               </div>
               <div className="divide-y divide-white/[0.03] flex flex-col">
-                {displayRecords.slice(0, 50).map(h => (
+                {sortedRecords.slice(0, displayLimit).map(h => (
                   <div
                     key={`${h.source}-${h.id}`}
                     className="grid grid-cols-[90px_1fr_1fr_1fr_100px] items-center gap-0 px-6 py-3.5 hover:bg-white/[0.04] transition-colors group cursor-default"
@@ -489,7 +691,7 @@ export default function ItemPageClient({ name }: { name: string }) {
                     </span>
                   </div>
                 ))}
-                {displayRecords.length === 0 && (
+                {sortedRecords.length === 0 && (
                   <div className="py-16 text-center shadow-inner rounded-b-[20px]">
                     <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 mx-auto">
                         <svg className="w-5 h-5 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -504,6 +706,16 @@ export default function ItemPageClient({ name }: { name: string }) {
                 )}
               </div>
             </div>
+
+            {/* Load More */}
+            {sortedRecords.length > displayLimit && (
+              <button
+                onClick={() => setDisplayLimit(l => l + PAGE_SIZE)}
+                className="mt-4 w-full py-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] text-[12px] font-bold text-slate-400 hover:text-slate-200 transition-all active:scale-[0.99]"
+              >
+                Load More — showing {displayLimit} of {sortedRecords.length}
+              </button>
+            )}
           </div>
         </>
       )}

@@ -12,6 +12,14 @@ interface ServiceResult {
   description: string;
 }
 
+interface GeTrackerTiming {
+  status: string | null;
+  lastSeen: string | null;
+  intervalSec: number | null;
+  nextRunAt: string | null;
+  remainingSec: number | null;
+}
+
 async function checkDatabase(): Promise<ServiceResult> {
   const start = Date.now();
   try {
@@ -134,7 +142,7 @@ async function checkGETracker(): Promise<ServiceResult> {
     const supabase = serviceClient();
     const { data: hb } = await supabase
       .from('tracker_heartbeat')
-      .select('status, last_seen')
+      .select('status, last_seen, metadata')
       .eq('service', 'ge')
       .maybeSingle();
 
@@ -148,8 +156,19 @@ async function checkGETracker(): Promise<ServiceResult> {
     if (hb.status !== 'ok') {
       return { name: 'GE Tracker', status: 'degraded', latency: null, description: `Tracker reported: ${hb.status}` };
     }
+    const intervalRaw = hb.metadata && typeof hb.metadata === 'object' && 'interval' in hb.metadata
+      ? (hb.metadata as { interval?: unknown }).interval
+      : null;
+    const intervalSec = typeof intervalRaw === 'number' ? intervalRaw : null;
+
     if (ageMins < 30) {
-      return { name: 'GE Tracker', status: 'operational', latency: null, description: `Last run ${ageMins}m ago` };
+      const cadence = intervalSec ? ` · every ${Math.round(intervalSec / 60)}m` : '';
+      return {
+        name: 'GE Tracker',
+        status: 'operational',
+        latency: null,
+        description: `Last run ${ageMins}m ago${cadence}`,
+      };
     }
     const ageHrs = Math.floor(ageMins / 60);
     return {
@@ -163,12 +182,56 @@ async function checkGETracker(): Promise<ServiceResult> {
   }
 }
 
+async function getGeTrackerTiming(): Promise<GeTrackerTiming> {
+  try {
+    const supabase = serviceClient();
+    const { data: hb } = await supabase
+      .from('tracker_heartbeat')
+      .select('status, last_seen, metadata')
+      .eq('service', 'ge')
+      .maybeSingle();
+
+    if (!hb?.last_seen) {
+      return { status: hb?.status ?? null, lastSeen: null, intervalSec: null, nextRunAt: null, remainingSec: null };
+    }
+
+    const intervalRaw = hb.metadata && typeof hb.metadata === 'object' && 'interval' in hb.metadata
+      ? (hb.metadata as { interval?: unknown }).interval
+      : null;
+    const intervalSec = typeof intervalRaw === 'number' ? intervalRaw : null;
+    const lastSeenMs = new Date(hb.last_seen).getTime();
+
+    if (!intervalSec) {
+      return {
+        status: hb.status ?? null,
+        lastSeen: hb.last_seen,
+        intervalSec: null,
+        nextRunAt: null,
+        remainingSec: null,
+      };
+    }
+
+    const nextRunMs = lastSeenMs + intervalSec * 1000;
+    const remainingSec = Math.max(0, Math.floor((nextRunMs - Date.now()) / 1000));
+    return {
+      status: hb.status ?? null,
+      lastSeen: hb.last_seen,
+      intervalSec,
+      nextRunAt: new Date(nextRunMs).toISOString(),
+      remainingSec,
+    };
+  } catch {
+    return { status: null, lastSeen: null, intervalSec: null, nextRunAt: null, remainingSec: null };
+  }
+}
+
 export async function GET() {
-  const [db, updates, ge, ferox] = await Promise.all([
+  const [db, updates, ge, ferox, geTiming] = await Promise.all([
     checkDatabase(),
     checkPlayerUpdates(),
     checkGETracker(),
     checkFeroxApi(),
+    getGeTrackerTiming(),
   ]);
 
   const website: ServiceResult = {
@@ -190,5 +253,8 @@ export async function GET() {
     status: overall,
     checkedAt: new Date().toISOString(),
     services,
+    tracker: {
+      ge: geTiming,
+    },
   });
 }
