@@ -36,10 +36,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ period, gains: [], rank: null });
   }
 
-  // Fetch snapshots in pages to avoid missing rows due API caps.
+  // Fetch snapshots in pages to avoid missing rows due to API caps.
   const pageSize = 1000;
   let from = 0;
   let sawSnapshot = false;
+  const until = new Date().toISOString();
 
   // Group snapshots: track first/last per player, plus a minimum XP fallback.
   // If first->last is non-positive due to a bad early snapshot, we recover using min->last.
@@ -51,9 +52,11 @@ export async function GET(request: NextRequest) {
   while (true) {
     const { data: batch } = await db
       .from('player_snapshots')
-      .select('player_username, total_xp, snapshot_data, created_at')
+      .select('id, player_username, total_xp, snapshot_data, created_at')
       .gte('created_at', since.toISOString())
+      .lte('created_at', until)
       .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
       .range(from, from + pageSize - 1);
 
     const rows = batch ?? [];
