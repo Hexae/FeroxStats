@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
   const raw = request.nextUrl.searchParams.get('period') ?? 'week';
   const period = (['day', 'week', 'month'].includes(raw) ? raw : 'week') as Period;
   const limit = Math.min(Number(request.nextUrl.searchParams.get('limit') ?? 20), 50);
+  const targetUsername = request.nextUrl.searchParams.get('username')?.trim().toLowerCase() ?? null;
 
   const db = serviceClient();
   const since = getPeriodStart(period);
@@ -32,33 +33,53 @@ export async function GET(request: NextRequest) {
     .select('username, display_name, game_mode');
 
   if (!players || players.length === 0) {
-    return NextResponse.json({ period, gains: [] });
+    return NextResponse.json({ period, gains: [], rank: null });
   }
 
-  // Single batch query: fetch ALL snapshots in the period, ordered by time
-  const { data: allSnaps } = await db
-    .from('player_snapshots')
-    .select('player_username, total_xp, snapshot_data, created_at')
-    .gte('created_at', since.toISOString())
-    .order('created_at', { ascending: true });
+  // Fetch snapshots in pages to avoid missing rows due API caps.
+  const pageSize = 1000;
+  let from = 0;
+  let sawSnapshot = false;
 
-  if (!allSnaps || allSnaps.length === 0) {
-    return NextResponse.json({ period, gains: [] });
-  }
-
-  // Group snapshots: track first and last per player
+  // Group snapshots: track first/last per player, plus a minimum XP fallback.
+  // If first->last is non-positive due to a bad early snapshot, we recover using min->last.
   type SkillRow = { id: number; level: number };
   const first = new Map<string, { total_xp: number; skills: SkillRow[] }>();
   const last = new Map<string, { total_xp: number; skills: SkillRow[] }>();
+  const min = new Map<string, { total_xp: number; skills: SkillRow[] }>();
 
-  for (const snap of allSnaps) {
-    const u = snap.player_username;
-    const entry = {
-      total_xp: snap.total_xp ?? 0,
-      skills: ((snap.snapshot_data as { skills?: SkillRow[] } | null)?.skills ?? []) as SkillRow[],
-    };
-    if (!first.has(u)) first.set(u, entry);
-    last.set(u, entry); // always overwrite — ordered ascending so last write is newest
+  while (true) {
+    const { data: batch } = await db
+      .from('player_snapshots')
+      .select('player_username, total_xp, snapshot_data, created_at')
+      .gte('created_at', since.toISOString())
+      .order('created_at', { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    const rows = batch ?? [];
+    if (rows.length === 0) break;
+    sawSnapshot = true;
+
+    for (const snap of rows) {
+      const u = snap.player_username;
+      const entry = {
+        total_xp: snap.total_xp ?? 0,
+        skills: ((snap.snapshot_data as { skills?: SkillRow[] } | null)?.skills ?? []) as SkillRow[],
+      };
+      if (!first.has(u)) first.set(u, entry);
+      last.set(u, entry); // always overwrite — ordered ascending so last write is newest
+      const existingMin = min.get(u);
+      if (!existingMin || entry.total_xp < existingMin.total_xp) {
+        min.set(u, entry);
+      }
+    }
+
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+
+  if (!sawSnapshot) {
+    return NextResponse.json({ period, gains: [], rank: null });
   }
 
   // Build display name map
@@ -75,10 +96,20 @@ export async function GET(request: NextRequest) {
 
   for (const [username, oldest] of first) {
     const newest = last.get(username)!;
-    const xpGained = newest.total_xp - oldest.total_xp;
+    let baseline = oldest;
+    let xpGained = newest.total_xp - baseline.total_xp;
+
+    if (xpGained <= 0) {
+      const minimum = min.get(username);
+      if (minimum && newest.total_xp > minimum.total_xp) {
+        baseline = minimum;
+        xpGained = newest.total_xp - baseline.total_xp;
+      }
+    }
+
     if (xpGained <= 0) continue;
 
-    const oldTotal = oldest.skills.find(s => s.id === 0)?.level ?? 0;
+    const oldTotal = baseline.skills.find(s => s.id === 0)?.level ?? 0;
     const newTotal = newest.skills.find(s => s.id === 0)?.level ?? 0;
 
     gains.push({
@@ -92,8 +123,15 @@ export async function GET(request: NextRequest) {
 
   gains.sort((a, b) => b.xpGained - a.xpGained);
 
+  const rank = targetUsername
+    ? (() => {
+        const idx = gains.findIndex((g) => g.username.toLowerCase() === targetUsername);
+        return idx >= 0 ? idx + 1 : null;
+      })()
+    : null;
+
   return NextResponse.json(
-    { period, gains: gains.slice(0, limit) },
+    { period, gains: gains.slice(0, limit), rank },
     { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=60' } },
   );
 }

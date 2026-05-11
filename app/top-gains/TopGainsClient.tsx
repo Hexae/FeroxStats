@@ -32,6 +32,10 @@ export default function TopGainsClient() {
   const [gains, setGains] = useState<GainEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const filteredGains = gains.filter(
+    (g) => gameModeFilter === 'all' || g.game_mode === gameModeFilter
+  );
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -74,12 +78,13 @@ export default function TopGainsClient() {
       </div>
 
       {loading ? (
-        <div className="space-y-2">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="h-14 rounded-xl bg-white/5 animate-pulse" style={{ animationDelay: `${i * 60}ms` }} />
-          ))}
+        <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-10">
+          <div className="flex flex-col items-center justify-center text-center gap-4">
+            <div className="w-10 h-10 rounded-full border-4 border-emerald-600/30 border-t-emerald-500 animate-spin" />
+            <p className="text-slate-400 text-sm">Loading...</p>
+          </div>
         </div>
-      ) : (gains.filter(g => gameModeFilter === 'all' || g.game_mode === gameModeFilter)).length === 0 ? (
+      ) : filteredGains.length === 0 ? (
         <div className="text-center py-16 text-slate-500">
           <p className="text-lg font-semibold mb-1">No gains recorded</p>
           <p className="text-sm">Not enough snapshots in this period yet.</p>
@@ -94,12 +99,12 @@ export default function TopGainsClient() {
             <span className="w-16 text-right">Levels</span>
           </div>
 
-          {gains.filter(g => gameModeFilter === 'all' || g.game_mode === gameModeFilter).map((g, i) => (
+          {filteredGains.map((g, i) => (
             <div
               key={g.username}
               className={`grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-0 px-4 py-3 transition hover:bg-white/[0.03] ${
                 i === 0 ? 'bg-amber-500/5' : i === 1 ? 'bg-slate-500/5' : i === 2 ? 'bg-orange-500/5' : ''
-              } ${i < gains.length - 1 ? 'border-b border-white/[0.03]' : ''}`}
+              } ${i < filteredGains.length - 1 ? 'border-b border-white/[0.03]' : ''}`}
             >
               <span className={`w-10 text-sm font-bold tabular-nums ${
                 i === 0 ? 'text-amber-400' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-orange-400' : 'text-slate-600'

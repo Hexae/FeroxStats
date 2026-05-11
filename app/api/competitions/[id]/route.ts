@@ -170,6 +170,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     .order('created_at', { ascending: true });
 
   const firstSnap: Record<string, number> = {};
+  const minSnap: Record<string, number> = {};
   const lastSnap: Record<string, number> = {};
   const lastUpdatedAt: Record<string, string> = {};
   const timeSeries: Record<string, Array<{ t: string; xp: number }>> = {};
@@ -178,6 +179,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const u = s.player_username;
     const xp = extractXp(s, skillId, metric);
     if (!(u in firstSnap)) { firstSnap[u] = xp; timeSeries[u] = []; }
+    if (!(u in minSnap) || xp < minSnap[u]) minSnap[u] = xp;
     lastSnap[u] = xp;
     lastUpdatedAt[u] = s.created_at ?? '';
     timeSeries[u].push({ t: s.created_at ?? '', xp });
@@ -186,7 +188,16 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const standings = usernames.map((u: string) => ({
     username: u,
     display_name: nameMap[u] ?? u,
-    xp_gained: Math.max(0, (lastSnap[u] ?? 0) - (firstSnap[u] ?? 0)),
+    xp_gained: (() => {
+      const first = firstSnap[u] ?? 0;
+      const last = lastSnap[u] ?? 0;
+      let gained = last - first;
+      if (gained <= 0) {
+        const min = minSnap[u];
+        if (typeof min === 'number' && last > min) gained = last - min;
+      }
+      return Math.max(0, gained);
+    })(),
     start_xp: firstSnap[u] ?? 0,
     end_xp: lastSnap[u] ?? 0,
     last_updated_at: lastUpdatedAt[u] ?? null,

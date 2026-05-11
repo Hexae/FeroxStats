@@ -71,6 +71,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     const { data: snapshots } = await query;
 
     const firstSnap: Record<string, number> = {};
+    const minSnap: Record<string, number> = {};
     const lastSnap: Record<string, number> = {};
     for (const s of snapshots ?? []) {
       const u = s.player_username;
@@ -87,11 +88,16 @@ export async function GET(request: NextRequest, { params }: Params) {
         }
       }
       if (!(u in firstSnap)) firstSnap[u] = xp;
+      if (!(u in minSnap) || xp < minSnap[u]) minSnap[u] = xp;
       lastSnap[u] = xp;
     }
     for (const u of usernames) {
       if (u in firstSnap && u in lastSnap) {
-        xpGainMap[u] = Math.max(0, lastSnap[u] - firstSnap[u]);
+        let gained = lastSnap[u] - firstSnap[u];
+        if (gained <= 0 && u in minSnap && lastSnap[u] > minSnap[u]) {
+          gained = lastSnap[u] - minSnap[u];
+        }
+        xpGainMap[u] = Math.max(0, gained);
       } else {
         xpGainMap[u] = 0;
       }
