@@ -79,6 +79,7 @@ interface PlayerGroup {
 
 interface TopGainsResponse {
   period: string;
+  rank: number | null;
   gains: Array<{ username: string; display_name: string; xpGained: number; levelsGained: number }>;
 }
 
@@ -1441,7 +1442,7 @@ export default function PlayerPageClient({ username, isOwner }: { username: stri
 
   const { data: topGainsData } = useSWR<TopGainsResponse>(
     tab === 'gains' && gainPeriod !== 'all'
-      ? `/api/top-gains?period=${gainPeriod}&limit=50`
+      ? `/api/top-gains?period=${gainPeriod}&limit=50&username=${encodeURIComponent(username)}`
       : null,
     fetcher
   );
@@ -1490,7 +1491,9 @@ export default function PlayerPageClient({ username, isOwner }: { username: stri
   }, [gainsData]);
 
   const topGainsRank = useMemo(() => {
-    if (!topGainsData?.gains) return null;
+    if (!topGainsData) return null;
+    if (topGainsData.rank !== null && topGainsData.rank !== undefined) return topGainsData.rank;
+    if (!topGainsData.gains) return null;
     const idx = topGainsData.gains.findIndex(
       (g) => g.username.toLowerCase() === username.toLowerCase()
     );

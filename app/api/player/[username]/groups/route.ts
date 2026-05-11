@@ -80,6 +80,7 @@ export async function GET(
       .order('created_at', { ascending: true });
 
     const firstSnap: Record<string, number> = {};
+    const minSnap: Record<string, number> = {};
     const lastSnap: Record<string, number> = {};
 
     for (const s of snapshots ?? []) {
@@ -99,12 +100,22 @@ export async function GET(
         }
       }
       if (!(u in firstSnap)) firstSnap[u] = xp;
+      if (!(u in minSnap) || xp < minSnap[u]) minSnap[u] = xp;
       lastSnap[u] = xp;
     }
 
     const gains = usernames.map((u) => ({
       username: u,
-      xp_gained: Math.max(0, (lastSnap[u] ?? 0) - (firstSnap[u] ?? 0)),
+      xp_gained: (() => {
+        const first = firstSnap[u] ?? 0;
+        const last = lastSnap[u] ?? 0;
+        let gained = last - first;
+        if (gained <= 0) {
+          const min = minSnap[u];
+          if (typeof min === 'number' && last > min) gained = last - min;
+        }
+        return Math.max(0, gained);
+      })(),
     }));
     gains.sort((a, b) => b.xp_gained - a.xp_gained);
 

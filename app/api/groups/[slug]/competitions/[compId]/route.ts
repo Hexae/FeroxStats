@@ -46,6 +46,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   // Calculate XP gained per member
   const firstSnap: Record<string, number> = {};
+  const minSnap: Record<string, number> = {};
   const lastSnap: Record<string, number> = {};
 
   for (const s of snapshots ?? []) {
@@ -63,13 +64,23 @@ export async function GET(_req: NextRequest, { params }: Params) {
       }
     }
     if (!(u in firstSnap)) firstSnap[u] = xp;
+    if (!(u in minSnap) || xp < minSnap[u]) minSnap[u] = xp;
     lastSnap[u] = xp;
   }
 
   const standings = usernames.map(u => ({
     username: u,
     display_name: nameMap[u] ?? u,
-    xp_gained: Math.max(0, (lastSnap[u] ?? 0) - (firstSnap[u] ?? 0)),
+    xp_gained: (() => {
+      const first = firstSnap[u] ?? 0;
+      const last = lastSnap[u] ?? 0;
+      let gained = last - first;
+      if (gained <= 0) {
+        const min = minSnap[u];
+        if (typeof min === 'number' && last > min) gained = last - min;
+      }
+      return Math.max(0, gained);
+    })(),
   }));
 
   standings.sort((a, b) => b.xp_gained - a.xp_gained);

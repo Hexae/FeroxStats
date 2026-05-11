@@ -38,13 +38,12 @@ async function buildChartData(
     .lte('created_at', endsAt)
     .order('created_at', { ascending: true });
 
-  const firstXp: Record<string, number> = {};
   const timeSeries: Record<string, Array<{ t: string; xp: number }>> = {};
 
   for (const snap of chartSnapshots ?? []) {
     const u = snap.player_username;
     const xp = extractXp(snap, skillId, metric);
-    if (!(u in firstXp)) { firstXp[u] = xp; timeSeries[u] = []; }
+    if (!(u in timeSeries)) timeSeries[u] = [];
     timeSeries[u].push({ t: snap.created_at ?? '', xp });
   }
 
@@ -53,7 +52,7 @@ async function buildChartData(
     display_name: s.display_name,
     points: (timeSeries[s.username] ?? []).map((p) => ({
       t: p.t,
-      xp_gained: Math.max(0, p.xp - (firstXp[s.username] ?? s.start_xp)),
+      xp_gained: Math.max(0, p.xp - s.start_xp),
     })),
   }));
 }
@@ -170,7 +169,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
     .order('created_at', { ascending: true });
 
   const firstSnap: Record<string, number> = {};
+  const minSnap: Record<string, number> = {};
   const lastSnap: Record<string, number> = {};
+  const baselineSnap: Record<string, number> = {};
   const lastUpdatedAt: Record<string, string> = {};
   const timeSeries: Record<string, Array<{ t: string; xp: number }>> = {};
 
@@ -178,6 +179,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const u = s.player_username;
     const xp = extractXp(s, skillId, metric);
     if (!(u in firstSnap)) { firstSnap[u] = xp; timeSeries[u] = []; }
+    if (!(u in minSnap) || xp < minSnap[u]) minSnap[u] = xp;
     lastSnap[u] = xp;
     lastUpdatedAt[u] = s.created_at ?? '';
     timeSeries[u].push({ t: s.created_at ?? '', xp });
@@ -186,8 +188,22 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const standings = usernames.map((u: string) => ({
     username: u,
     display_name: nameMap[u] ?? u,
-    xp_gained: Math.max(0, (lastSnap[u] ?? 0) - (firstSnap[u] ?? 0)),
-    start_xp: firstSnap[u] ?? 0,
+    xp_gained: (() => {
+      const first = firstSnap[u] ?? 0;
+      const last = lastSnap[u] ?? 0;
+      let baseline = first;
+      let gained = last - baseline;
+      if (gained <= 0) {
+        const min = minSnap[u];
+        if (typeof min === 'number' && last > min) {
+          baseline = min;
+          gained = last - baseline;
+        }
+      }
+      baselineSnap[u] = baseline;
+      return Math.max(0, gained);
+    })(),
+    start_xp: baselineSnap[u] ?? 0,
     end_xp: lastSnap[u] ?? 0,
     last_updated_at: lastUpdatedAt[u] ?? null,
   }));
@@ -200,7 +216,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     display_name: s.display_name,
     points: (timeSeries[s.username] ?? []).map((p) => ({
       t: p.t,
-      xp_gained: Math.max(0, p.xp - (firstSnap[s.username] ?? 0)),
+      xp_gained: Math.max(0, p.xp - (baselineSnap[s.username] ?? 0)),
     })),
   }));
 
