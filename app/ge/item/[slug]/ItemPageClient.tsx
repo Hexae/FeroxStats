@@ -105,7 +105,7 @@ export default function ItemPageClient({ name }: { name: string }) {
   }, [name]);
 
   // Derived state with useMemo to enforce purity
-  const { filteredHistory, filteredPrices, chartData, stats, displayRecords } = useMemo(() => {
+  const { filteredHistory, chartData, chartTrendPct, chartTrendUp, stats, displayRecords } = useMemo(() => {
     const start = rangeStart(range, lastRefresh);
     
     const fh = start ? history.filter(h => new Date(h.traded_at) >= start) : history;
@@ -129,17 +129,22 @@ export default function ItemPageClient({ name }: { name: string }) {
     const buyVol   = fh.filter(h => h.type === 'BUY').reduce((s, h)  => s + h.quantity, 0);
     const sellVol  = fh.filter(h => h.type === 'SELL').reduce((s, h) => s + h.quantity, 0);
 
-    // Prepare chart data by combining both sources.
-    // We prefer executed trade buckets, and fill missing buckets with sampled price history.
+    // Prepare chart data from completed transactions only.
     const labels: string[] = [];
     const prices: number[] = [];
 
     const bucketMinutes = range === '1W' ? 60 * 4 : range === '1M' ? 60 * 12 : range === '3M' ? 60 * 24 : 60 * 48;
     const bucketMs = bucketMinutes * 60_000;
     const txBuckets = new Map<number, number[]>();
-    const fpBuckets = new Map<number, number[]>();
 
-    for (const tx of marketRows) {
+    const transactionRows = fh.filter(
+      h =>
+        h.quantity > 0 &&
+        h.total_value > 0 &&
+        (h.source === 'transaction' || h.type === 'TRANSACTION')
+    );
+
+    for (const tx of transactionRows) {
       if (tx.quantity <= 0 || tx.total_value <= 0) continue;
       const tradedAt = new Date(tx.traded_at).getTime();
       if (!Number.isFinite(tradedAt)) continue;
@@ -151,26 +156,13 @@ export default function ItemPageClient({ name }: { name: string }) {
       txBuckets.set(bucketTs, current);
     }
 
-    for (const sample of fp) {
-      if (sample.price <= 0) continue;
-      const sampledAt = new Date(sample.sampled_at).getTime();
-      if (!Number.isFinite(sampledAt)) continue;
-      const bucketTs = Math.floor(sampledAt / bucketMs) * bucketMs;
-      const current = fpBuckets.get(bucketTs) ?? [];
-      current.push(sample.price);
-      fpBuckets.set(bucketTs, current);
-    }
-
-    const allTimes = Array.from(new Set([...txBuckets.keys(), ...fpBuckets.keys()])).sort((a, b) => a - b);
+    const allTimes = Array.from(txBuckets.keys()).sort((a, b) => a - b);
     for (const t of allTimes) {
       const txValues = txBuckets.get(t);
-      const fpValues = fpBuckets.get(t);
       let pointPrice = 0;
 
       if (txValues && txValues.length > 0) {
         pointPrice = Math.round(txValues.reduce((s, p) => s + p, 0) / txValues.length);
-      } else if (fpValues && fpValues.length > 0) {
-        pointPrice = Math.round(fpValues.reduce((s, p) => s + p, 0) / fpValues.length);
       }
 
       if (pointPrice <= 0) continue;
@@ -200,6 +192,12 @@ export default function ItemPageClient({ name }: { name: string }) {
       ]
     };
 
+    const firstPrice = prices[0] ?? 0;
+    const lastPrice = prices[prices.length - 1] ?? 0;
+    const chartTrendPct =
+      firstPrice > 0 ? Number((((lastPrice - firstPrice) / firstPrice) * 100).toFixed(1)) : null;
+    const chartTrendUp = chartTrendPct !== null ? chartTrendPct >= 0 : null;
+
     // Filter display records for the list
     const records = fh.filter(h => {
       if (tab === 'all') return true;
@@ -210,8 +208,9 @@ export default function ItemPageClient({ name }: { name: string }) {
 
     return {
       filteredHistory: fh,
-      filteredPrices: fp,
       chartData: data,
+      chartTrendPct,
+      chartTrendUp,
       stats: { avgPrice, minPrice, maxPrice, totalVol, totalQty, buyVol, sellVol },
       displayRecords: records
     };
@@ -396,20 +395,13 @@ export default function ItemPageClient({ name }: { name: string }) {
               <div>
                 <div className="flex items-center gap-3">
                     <h2 className="text-lg font-bold text-white">Market Trends</h2>
-                    {filteredPrices.length > 0 && (() => {
-                        const first = filteredPrices[0].price;
-                        const last  = filteredPrices[filteredPrices.length - 1].price;
-                        const diff  = last - first;
-                        if (!first || first === 0) return null;
-                        const pct = ((diff / first) * 100).toFixed(1);
-                        return (
-                        <span className={`text-[12px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1 ${
-                            diff >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
-                        }`}>
-                            {diff >= 0 ? '↑' : '↓'} {Math.abs(Number(pct))}%
-                        </span>
-                        );
-                    })()}
+                    {chartTrendPct !== null && chartTrendUp !== null && (
+                      <span className={`text-[12px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                        chartTrendUp ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                      }`}>
+                        {chartTrendUp ? '↑' : '↓'} {Math.abs(chartTrendPct)}%
+                      </span>
+                    )}
                 </div>
                 <p className="text-sm text-neutral-500 mt-1.5 font-medium">Aggregated pricing matched with periodic traded volume.</p>
               </div>
