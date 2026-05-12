@@ -255,7 +255,10 @@ function SkillCard({ skill }: { skill: SkillData }) {
   const xp = parseInt(skill.xp);
   const pct = progressToNext(xp, skill.level);
   const maxed = skill.level >= 99;
+  const trueMaxed = xp >= 200_000_000;
   const vLevel = maxed ? virtualLevel(xp) : skill.level;
+  const levelColor = trueMaxed ? 'text-[#6f4bd8]' : maxed ? 'text-amber-400' : 'text-white';
+  const barColor = trueMaxed ? 'bg-[#6f4bd8]' : maxed ? 'bg-amber-400' : 'bg-sky-500';
 
   return (
     <div className="group relative flex flex-col gap-2 rounded-xl border border-white/5 bg-white/[0.03] p-3 transition hover:border-white/10 hover:bg-white/[0.06]">
@@ -271,7 +274,7 @@ function SkillCard({ skill }: { skill: SkillData }) {
         </div>
         <span className="flex-1 truncate text-xs font-medium text-slate-400">{skill.name}</span>
         <span
-          className={`text-sm font-bold tabular-nums ${maxed ? 'text-amber-400' : 'text-white'}`}
+          className={`text-sm font-bold tabular-nums ${levelColor}`}
         >
           {vLevel}
         </span>
@@ -279,7 +282,7 @@ function SkillCard({ skill }: { skill: SkillData }) {
 
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
         <div
-          className={`h-full rounded-full transition-all ${maxed ? 'bg-amber-400' : 'bg-sky-500'}`}
+          className={`h-full rounded-full transition-all ${barColor}`}
           style={{ width: `${pct}%` }}
         />
       </div>
