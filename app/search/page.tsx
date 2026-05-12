@@ -25,7 +25,7 @@ export default async function SearchPage({
   const params = await searchParams;
   const query = normalizeQuery(params.q);
   const response = query
-    ? await unifiedSearch(query, { playerLimit: 20, itemLimit: 20, updateLimit: 20 })
+    ? await unifiedSearch(query, { playerLimit: 20, itemLimit: 20, updateLimit: 20, includeRemotePlayerExactMatch: true })
     : await unifiedSearch('');
 
   const { sections, counts } = response;

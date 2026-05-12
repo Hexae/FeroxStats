@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   }
 
   const response = await unifiedSearch(q, mode === 'full'
-    ? { playerLimit: 20, itemLimit: 20, updateLimit: 20 }
+    ? { playerLimit: 20, itemLimit: 20, updateLimit: 20, includeRemotePlayerExactMatch: true }
     : { playerLimit: 6, itemLimit: 5, updateLimit: 4 });
 
   return NextResponse.json(response);

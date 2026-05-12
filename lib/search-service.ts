@@ -1,5 +1,6 @@
 import { serviceClient } from '@/lib/supabase-service';
 import { getAllPublishedUpdates } from '@/lib/updates-service';
+import { fetchPlayerHiscores } from './osrs';
 import {
   createEmptyUnifiedSearchResponse,
   type ItemSearchResult,
@@ -12,6 +13,7 @@ type UnifiedSearchOptions = {
   playerLimit?: number;
   itemLimit?: number;
   updateLimit?: number;
+  includeRemotePlayerExactMatch?: boolean;
 };
 
 const DEFAULT_LIMITS = {
@@ -82,6 +84,33 @@ async function searchPlayers(query: string, limit: number): Promise<PlayerSearch
       return a.overallRank - b.overallRank;
     })
     .slice(0, limit);
+}
+
+async function searchExactRemotePlayer(query: string): Promise<PlayerSearchResult | null> {
+  try {
+    const hiscoreData = await fetchPlayerHiscores(query);
+    const rawName = hiscoreData.name?.trim() || query;
+    const username = rawName.toLowerCase();
+    if (!username) return null;
+
+    const overallSkill = hiscoreData.skills?.find((skill) => skill.id === 0);
+    const overallRank = Number.isFinite(overallSkill?.rank) && (overallSkill?.rank ?? 0) > 0
+      ? overallSkill?.rank ?? null
+      : null;
+
+    return {
+      id: `player:${username}`,
+      type: 'player',
+      label: rawName,
+      subtitle: overallRank ? `Rank #${overallRank.toLocaleString()}` : 'Player',
+      href: `/player/${encodeURIComponent(username)}`,
+      username,
+      displayName: rawName,
+      overallRank,
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function searchItems(query: string, limit: number): Promise<ItemSearchResult[]> {
@@ -169,9 +198,23 @@ export async function unifiedSearch(
     searchUpdates(normalized, updateLimit),
   ]);
 
-  const players = playersResult.status === 'fulfilled' ? playersResult.value : [];
+  let players = playersResult.status === 'fulfilled' ? playersResult.value : [];
   const items = itemsResult.status === 'fulfilled' ? itemsResult.value : [];
   const updates = updatesResult.status === 'fulfilled' ? updatesResult.value : [];
+
+  if (options.includeRemotePlayerExactMatch) {
+    const hasExactPlayerMatch = players.some((player) =>
+      player.username === normalized || player.displayName.trim().toLowerCase() === normalized,
+    );
+
+    if (!hasExactPlayerMatch) {
+      const remotePlayer = await searchExactRemotePlayer(query);
+      if (remotePlayer) {
+        players = [remotePlayer, ...players.filter((player) => player.username !== remotePlayer.username)]
+          .slice(0, playerLimit);
+      }
+    }
+  }
 
   const results = [...players, ...items, ...updates];
 
