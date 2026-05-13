@@ -21,8 +21,9 @@ export default function ErrorPage({
         src="/death.webp"
         alt="Death"
         width={200}
-        height={280}
+        height={414}
         className="mb-6 drop-shadow-2xl"
+        style={{ height: 'auto' }}
         priority
       />
       <p className="text-[7rem] font-black leading-none text-white mb-2">500</p>

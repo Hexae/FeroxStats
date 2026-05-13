@@ -183,9 +183,10 @@ export default function HomeClient() {
             src="/Death.webp"
             alt=""
             width={220}
-            height={340}
+            height={455}
             priority
-            className="relative z-10 h-auto w-[190px] xl:w-[220px] object-contain drop-shadow-[0_16px_40px_rgba(0,0,0,0.9)]"
+            className="relative z-10 w-[190px] xl:w-[220px] object-contain drop-shadow-[0_16px_40px_rgba(0,0,0,0.9)]"
+            style={{ height: 'auto' }}
           />
         </div>
 
