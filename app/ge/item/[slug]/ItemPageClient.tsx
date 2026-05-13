@@ -399,7 +399,7 @@ export default function ItemPageClient({ name }: { name: string }) {
     }
   };
 
-  const imageName   = name.replace(/ /g, '_').toLowerCase() + '.png';
+  const imageName   = (name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()).replace(/ /g, '_') + '.png';
   const totalOffers  = stats.buyVol + stats.sellVol;
   const buyPct       = totalOffers > 0 ? Math.round((stats.buyVol / totalOffers) * 100) : 50;
 
