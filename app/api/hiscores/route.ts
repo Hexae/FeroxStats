@@ -36,58 +36,29 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // ── Per-skill hiscores: extract from cached player snapshots ─────────────────
+  // ── Per-skill hiscores: use a server-side DB function ──
   const skillObj = SKILLS.find(s => s.name.toLowerCase() === skill);
-  if (!skillObj) return NextResponse.json({ hiscores: [] });
+  if (!skillObj) return NextResponse.json({ hiscores: [] }, { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' } });
   const skillId = skillObj.id;
 
-  // Fetch latest snapshots (most recent first), deduplicate by player
-  const { data: snapshots, error } = await supabase
-    .from('player_snapshots')
-    .select('player_username, snapshot_data, created_at')
-    .order('created_at', { ascending: false })
-    .limit(500);
+  const { data: rows, error: rpcError } = await supabase.rpc('get_skill_hiscores', {
+    p_skill_id: skillId,
+    p_limit: limit,
+  });
 
-  if (error || !snapshots) return NextResponse.json({ hiscores: [] });
+  if (rpcError || !rows) return NextResponse.json({ hiscores: [] }, { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' } });
 
-  // Build a display_name + game_mode map from the players table
-  const usernames = [...new Set(snapshots.map(s => s.player_username))];
-  const { data: playerRows } = await supabase
-    .from('players')
-    .select('username, display_name, game_mode')
-    .in('username', usernames);
-  const displayNames: Record<string, string> = {};
-  const gameModes: Record<string, string> = {};
-  for (const p of playerRows ?? []) {
-    displayNames[p.username] = p.display_name ?? p.username;
-    gameModes[p.username] = p.game_mode ?? 'regular';
-  }
-
-  const seen = new Set<string>();
-  type SkillRow = { rank: number; username: string; name: string; game_mode: string; level: number; xp: number };
-  const results: SkillRow[] = [];
-
-  for (const snap of snapshots) {
-    if (seen.has(snap.player_username)) continue;
-    seen.add(snap.player_username);
-
-    const skills = (snap.snapshot_data as { skills?: Array<{ id: number; rank: number; level: number; xp: string }> } | null)?.skills;
-    if (!skills) continue;
-
-    const s = skills.find(sk => sk.id === skillId);
-    if (!s || s.rank <= 0) continue;
-
-    results.push({
-      rank: s.rank,
-      username: snap.player_username,
-      name: displayNames[snap.player_username] ?? snap.player_username,
-      game_mode: gameModes[snap.player_username] ?? 'regular',
-      level: s.level,
-      xp: parseInt(s.xp),
-    });
-  }
-
-  results.sort((a, b) => a.rank - b.rank);
-
-  return NextResponse.json({ hiscores: results.slice(0, limit) });
+  return NextResponse.json(
+    {
+      hiscores: (rows as Array<{ username: string; display_name: string; game_mode: string; skill_rank: number; skill_level: number; skill_xp: number }>).map(r => ({
+        rank: r.skill_rank,
+        username: r.username,
+        name: r.display_name,
+        game_mode: r.game_mode,
+        level: r.skill_level,
+        xp: r.skill_xp,
+      })),
+    },
+    { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' } },
+  );
 }

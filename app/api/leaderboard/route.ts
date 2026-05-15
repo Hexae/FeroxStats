@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message ?? JSON.stringify(error) }, { status: 500 });
     }
-    return NextResponse.json(data ?? []);
+    return NextResponse.json(data ?? [], { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' } });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : JSON.stringify(e);
     return NextResponse.json({ error: message }, { status: 500 });

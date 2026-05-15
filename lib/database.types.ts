@@ -662,7 +662,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_skill_hiscores: {
+        Args: {
+          p_skill_id: number
+          p_limit?: number
+        }
+        Returns: {
+          username: string
+          display_name: string
+          game_mode: string
+          skill_rank: number
+          skill_level: number
+          skill_xp: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

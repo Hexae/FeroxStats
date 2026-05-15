@@ -42,17 +42,16 @@ export async function GET(request: NextRequest) {
   let sawSnapshot = false;
   const until = new Date().toISOString();
 
-  // Group snapshots: track first/last per player, plus a minimum XP fallback.
-  // If first->last is non-positive due to a bad early snapshot, we recover using min->last.
-  type SkillRow = { id: number; level: number };
-  const first = new Map<string, { total_xp: number; skills: SkillRow[] }>();
-  const last = new Map<string, { total_xp: number; skills: SkillRow[] }>();
-  const min = new Map<string, { total_xp: number; skills: SkillRow[] }>();
+  // Group snapshots by player, tracking first (oldest), last (newest), and minimum total XP for the period.
+  type SnapEntry = { total_xp: number; total_level: number };
+  const first = new Map<string, SnapEntry>();
+  const last = new Map<string, SnapEntry>();
+  const min = new Map<string, SnapEntry>();
 
   while (true) {
     const { data: batch } = await db
       .from('player_snapshots')
-      .select('id, player_username, total_xp, snapshot_data, created_at')
+      .select('id, player_username, total_xp, total_level, created_at')
       .gte('created_at', since.toISOString())
       .lte('created_at', until)
       .order('created_at', { ascending: true })
@@ -65,9 +64,9 @@ export async function GET(request: NextRequest) {
 
     for (const snap of rows) {
       const u = snap.player_username;
-      const entry = {
+      const entry: SnapEntry = {
         total_xp: snap.total_xp ?? 0,
-        skills: ((snap.snapshot_data as { skills?: SkillRow[] } | null)?.skills ?? []) as SkillRow[],
+        total_level: snap.total_level ?? 0,
       };
       if (!first.has(u)) first.set(u, entry);
       last.set(u, entry); // always overwrite — ordered ascending so last write is newest
@@ -112,15 +111,12 @@ export async function GET(request: NextRequest) {
 
     if (xpGained <= 0) continue;
 
-    const oldTotal = baseline.skills.find(s => s.id === 0)?.level ?? 0;
-    const newTotal = newest.skills.find(s => s.id === 0)?.level ?? 0;
-
     gains.push({
       username,
       display_name: nameMap.get(username) ?? username,
       game_mode: gameModeMap.get(username) ?? 'regular',
       xpGained,
-      levelsGained: newTotal - oldTotal,
+      levelsGained: newest.total_level - baseline.total_level,
     });
   }
 
