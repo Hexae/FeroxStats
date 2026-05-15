@@ -1,9 +1,9 @@
-/* eslint-disable @next/next/no-img-element */
-'use client';
+﻿'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, useDeferredValue, lazy, Suspense } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import useSWR from 'swr';
 
 import {
@@ -33,10 +33,6 @@ import {
   type FeroxHiscoreResponse,
   type SkillData,
 } from '@/lib/osrs';
-
-// ─── REPLACED BELOW — see full component ──────────────────────────────────────
-// (This comment is intentionally left as a sentinel; the real implementation
-//  follows after the type block. Do not remove anything between here and EOF.)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -133,6 +129,48 @@ interface RecordsResponse {
   records: Record<string, Record<PeriodKey, SkillRecord | null>>;
 }
 
+interface CollectionLogItem {
+  key: string;
+  name: string;
+  eventType: 'RARE_DROP' | 'PET_OBTAINED';
+  rarityTier: 'mythic' | 'legendary' | 'epic' | 'rare' | 'uncommon' | 'common' | 'unknown';
+  dropRateOdds: string | null;
+  dropRateDenominator: number | null;
+  obtainedCount: number;
+  firstObtainedAt: string | null;
+  lastObtainedAt: string | null;
+  firstKc: number | null;
+  lastKc: number | null;
+  imageUrl: string | null;
+}
+
+interface CollectionLogCategory {
+  key: string;
+  label: string;
+  itemCount: number;
+  eventCount: number;
+  maxKills: number | null;
+  firstObtainedAt: string | null;
+  lastObtainedAt: string | null;
+  items: CollectionLogItem[];
+  knownDrops: string[];
+  knownPets: string[];
+}
+
+interface CollectionLogResponse {
+  configured: boolean;
+  message?: string;
+  error?: string;
+  summary: {
+    totalItems: number;
+    totalCategories: number;
+    totalEvents: number;
+    firstObtainedAt: string | null;
+    lastObtainedAt: string | null;
+  };
+  categories: CollectionLogCategory[];
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const XP_TABLE: number[] = (() => {
@@ -194,6 +232,16 @@ function formatRelativeTime(dateStr: string): string {
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
 }
+
+function formatCalendarDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return 'Unknown';
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 
 // ─── Shared milestone helpers ─────────────────────────────────────────────────
 
@@ -755,7 +803,7 @@ function CircularProgress({ pct, size = 44 }: { pct: number; size?: number }) {
   );
 }
 
-// ─── XP left formatter (lowercase k / m) ─────────────────────────────────────
+// ─── XP left formatter  ─────────────────────────────────────
 
 function fmtXpLeft(xp: number): string {
   if (xp >= 1_000_000) return `${(xp / 1_000_000).toFixed(2)}m`;
@@ -906,7 +954,7 @@ function AchievementProgress({ skills, username }: { skills: SkillData[]; userna
       .slice(0, 5);
   }, [achData]);
 
-  // Skills at 99 that aren't in snapshot records (app wasn't tracking yet)
+  // Skills at 99 that aren't in snapshot records
   const untrackedNinetyNines = useMemo(() => {
     const trackedIds = new Set(recentAchievements.map((a) => a.skillId));
     return nonOverall
@@ -949,7 +997,7 @@ function AchievementProgress({ skills, username }: { skills: SkillData[]; userna
       {/* ── Left: Achievement Progress bars ──────────────────────────────── */}
       <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03]">
         <div className="flex items-center gap-2 border-b border-white/5 px-3 sm:px-4 py-2 sm:py-3">
-          <span className="text-base">🏆</span>
+          <span className="text-base">ðŸ†</span>
           <h2 className="text-sm font-semibold text-slate-200">Achievement Progress</h2>
         </div>
         <div className="divide-y divide-white/[0.04] py-1 sm:py-2">
@@ -1149,6 +1197,924 @@ function AchievementProgress({ skills, username }: { skills: SkillData[]; userna
   );
 }
 
+// ─── Collection helpers ───────────────────────────────────────────────────────
+
+function getItemRarityStyle(tier: CollectionLogItem['rarityTier']): {
+  border: string;
+  glow: string;
+  dot: string;
+  text: string;
+  label: string;
+  pulse: boolean;
+} {
+  switch (tier) {
+    case 'mythic':    return { border: 'border-fuchsia-500/50', glow: 'shadow-[0_0_12px_rgba(217,70,239,0.20)]',  dot: 'bg-fuchsia-400', text: 'text-fuchsia-300', label: 'Mythic',    pulse: true  };
+    case 'legendary': return { border: 'border-rose-500/50',    glow: 'shadow-[0_0_12px_rgba(244,63,94,0.20)]',   dot: 'bg-rose-400',    text: 'text-rose-300',    label: 'Legendary', pulse: true  };
+    case 'epic':      return { border: 'border-violet-500/45',  glow: 'shadow-[0_0_12px_rgba(139,92,246,0.18)]',  dot: 'bg-violet-400',  text: 'text-violet-300',  label: 'Epic',      pulse: false };
+    case 'rare':      return { border: 'border-amber-500/45',   glow: 'shadow-[0_0_12px_rgba(245,158,11,0.18)]',  dot: 'bg-amber-400',   text: 'text-amber-300',   label: 'Rare',      pulse: false };
+    case 'uncommon':  return { border: 'border-sky-400/40',     glow: 'shadow-[0_0_8px_rgba(56,189,248,0.14)]',   dot: 'bg-sky-400',     text: 'text-sky-300',     label: 'Uncommon',  pulse: false };
+    case 'common':    return { border: 'border-white/[0.09]',   glow: '',                                          dot: 'bg-slate-500',   text: 'text-slate-400',   label: 'Common',    pulse: false };
+    default:          return { border: 'border-white/[0.07]',   glow: '',                                          dot: 'bg-slate-600',   text: 'text-slate-500',   label: 'Unknown',   pulse: false };
+  }
+}
+
+function getCollectionGroupName(label: string, items: CollectionLogItem[]): string {
+  if (items.length > 0 && items.every((i) => i.eventType === 'PET_OBTAINED')) return 'Pets';
+  const l = label.toLowerCase();
+  if (/clue|casket|mimic/.test(l)) return 'Clues';
+  if (/chamber|theatre|tomb|raid/.test(l)) return 'Raids';
+  if (/wilderness|revenant|wildy/.test(l)) return 'Wilderness';
+  if (/gauntlet|corrupted|tempoross|wintertodt|zalcano|soul war|castle|barbarian|pest|gotr/.test(l)) return 'Minigames';
+  return 'Bosses';
+}
+
+const COL_GROUP_ORDER = ['Raids', 'Bosses', 'Wilderness', 'Pets', 'Clues', 'Minigames'];
+
+const SKILLING_PETS = new Set([
+  'baby chinchompa', 'beaver', 'giant squirrel', 'herbi', 'heron',
+  'rift guardian', 'rock golem', 'rocky', 'tangleroot', 'tiny tempor', 'quetzin',
+]);
+
+const OTHER_PETS = new Set([
+  'abyssal orphan', 'bloodhound', 'chompy chick', 'phoenix', 'smolcano',
+  'penance queen', "kril's child", 'sweeper',
+]);
+
+function getPetSubGroup(itemName: string): 'Boss' | 'Skilling' | 'Other' {
+  const n = itemName.toLowerCase();
+  if (SKILLING_PETS.has(n)) return 'Skilling';
+  if (OTHER_PETS.has(n)) return 'Other';
+  return 'Boss';
+}
+
+const PET_SUB_ORDER = ['Boss', 'Skilling', 'Other'] as const;
+type PetSubGroup = (typeof PET_SUB_ORDER)[number];
+
+type SortKey = 'date' | 'kc' | 'count' | 'name';
+
+const NEW_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+// Module-level snapshot: avoids React Compiler "impure function in render" error
+const COLLECTION_LOG_NOW_MS = Date.now();
+function isNewItem(lastObtainedAt: string | null): boolean {
+  if (!lastObtainedAt) return false;
+  return COLLECTION_LOG_NOW_MS - new Date(lastObtainedAt).getTime() < NEW_THRESHOLD_MS;
+}
+
+type CollectionDisplayRow = { item: CollectionLogItem; categoryKey: string; categoryLabel: string };
+
+function CollectionLogPanel({ username }: { username: string }) {
+  const sk = `ferox:cl:${username.toLowerCase()}`;
+
+  const [selectedKey, setSelectedKey] = useState<string>(() => {
+    if (typeof window === 'undefined') return '__recent__';
+    return window.localStorage.getItem(`${sk}:sel`) ?? '__recent__';
+  });
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>(() => {
+    if (typeof window === 'undefined') return 'grid';
+    return window.localStorage.getItem(`${sk}:view`) === 'table' ? 'table' : 'grid';
+  });
+  const [openGroups, setOpenGroups] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = window.localStorage.getItem(`${sk}:groups`);
+      if (raw) {
+        const p = JSON.parse(raw) as unknown;
+        if (Array.isArray(p) && p.every((x): x is string => typeof x === 'string')) return p;
+      }
+    } catch { /* ignore */ }
+    return [];
+  });
+  const [sidebarQuery, setSidebarQuery] = useState('');
+  const [itemQuery, setItemQuery]       = useState('');
+  const [sortBy, setSortBy]             = useState<SortKey>('date');
+  const [selectedCard, setSelectedCard] = useState<{ item: CollectionLogItem; categoryLabel: string } | null>(null);
+  const deferredItemQuery    = useDeferredValue(itemQuery.trim().toLowerCase());
+  const deferredSidebarQuery = useDeferredValue(sidebarQuery.trim().toLowerCase());
+  const defaultsAppliedRef   = useRef(false);
+
+  // Close detail card on Escape
+  useEffect(() => {
+    if (!selectedCard) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelectedCard(null); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedCard]);
+
+  const { data, isLoading } = useSWR<CollectionLogResponse>(
+    `/api/player/${encodeURIComponent(username)}/collection-log`,
+    fetcher,
+  );
+
+  // ── Persist ──────────────────────────────────────────────────────────────────
+  useEffect(() => { try { window.localStorage.setItem(`${sk}:sel`,    selectedKey);                } catch { /* ignore */ } }, [sk, selectedKey]);
+  useEffect(() => { try { window.localStorage.setItem(`${sk}:view`,   viewMode);                   } catch { /* ignore */ } }, [sk, viewMode]);
+  useEffect(() => { try { window.localStorage.setItem(`${sk}:groups`, JSON.stringify(openGroups)); } catch { /* ignore */ } }, [sk, openGroups]);
+
+  // ── Derived ───────────────────────────────────────────────────────────────────
+  const recentRows = useMemo<CollectionDisplayRow[]>(() => {
+    return (data?.categories ?? [])
+      .flatMap((cat) => cat.items.map((item) => ({ item, categoryKey: cat.key, categoryLabel: cat.label })))
+      .sort((a, b) => (b.item.lastObtainedAt ?? '').localeCompare(a.item.lastObtainedAt ?? ''));
+  }, [data?.categories]);
+
+  const categoryGroups = useMemo<[string, CollectionLogCategory[]][]>(() => {
+    const cats = data?.categories ?? [];
+    const filtered = deferredSidebarQuery
+      ? cats.filter((c) => c.label.toLowerCase().includes(deferredSidebarQuery))
+      : cats;
+    const map = new Map<string, CollectionLogCategory[]>();
+    for (const cat of filtered) {
+      const g = getCollectionGroupName(cat.label, cat.items);
+      if (!map.has(g)) map.set(g, []);
+      map.get(g)!.push(cat);
+    }
+    return [...map.entries()].sort(([a], [b]) => {
+      const ai = COL_GROUP_ORDER.indexOf(a);
+      const bi = COL_GROUP_ORDER.indexOf(b);
+      if (ai < 0 && bi < 0) return a.localeCompare(b);
+      if (ai < 0) return 1;
+      if (bi < 0) return -1;
+      return ai - bi;
+    });
+  }, [data?.categories, deferredSidebarQuery]);
+
+  // Auto-open first group when data loads and no group preference exists
+  useEffect(() => {
+    if (defaultsAppliedRef.current || categoryGroups.length === 0) return;
+    defaultsAppliedRef.current = true;
+    setOpenGroups((prev) => (prev.length > 0 ? prev : [categoryGroups[0]![0]]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryGroups.length]);
+
+  const petCategories = useMemo(
+    () => (data?.categories ?? []).filter((c) => c.items.length > 0 && c.items.every((i) => i.eventType === 'PET_OBTAINED')),
+    [data?.categories],
+  );
+
+  const petSubGroupRows = useMemo<Record<PetSubGroup, CollectionDisplayRow[]>>(() => {
+    const all = petCategories.flatMap((cat) =>
+      cat.items.map((item) => ({ item, categoryKey: cat.key, categoryLabel: cat.label })),
+    );
+    const groups: Record<PetSubGroup, CollectionDisplayRow[]> = { Boss: [], Skilling: [], Other: [] };
+    for (const row of all) groups[getPetSubGroup(row.item.name)].push(row);
+    for (const g of PET_SUB_ORDER) groups[g].sort((a, b) => a.item.name.localeCompare(b.item.name));
+    return groups;
+  }, [petCategories]);
+
+  const activePetSubGroup: PetSubGroup | null = selectedKey.startsWith('__pets:')
+    ? (selectedKey.slice(7, -2) as PetSubGroup)
+    : null;
+
+  const selectedCategory = useMemo(
+    () =>
+      selectedKey === '__recent__' || selectedKey.startsWith('__pets:')
+        ? null
+        : (data?.categories.find((c) => c.key === selectedKey) ?? null),
+    [data?.categories, selectedKey],
+  );
+
+  const displayRows = useMemo<CollectionDisplayRow[]>(() => {
+    function applySort(rows: CollectionDisplayRow[]): CollectionDisplayRow[] {
+      if (sortBy === 'date') return rows; // already sorted by date from source
+      return [...rows].sort((a, b) => {
+        if (sortBy === 'kc') return (a.item.firstKc ?? Infinity) - (b.item.firstKc ?? Infinity);
+        if (sortBy === 'count') return b.item.obtainedCount - a.item.obtainedCount;
+        return a.item.name.localeCompare(b.item.name);
+      });
+    }
+    if (selectedKey === '__recent__') {
+      const rows = deferredItemQuery
+        ? recentRows.filter(
+            (r) =>
+              r.item.name.toLowerCase().includes(deferredItemQuery) ||
+              r.categoryLabel.toLowerCase().includes(deferredItemQuery),
+          )
+        : recentRows;
+      return applySort(rows.slice(0, 250));
+    }
+    if (selectedKey.startsWith('__pets:')) {
+      const sub = selectedKey.slice(7, -2) as PetSubGroup;
+      const rows = petSubGroupRows[sub] ?? [];
+      return applySort(deferredItemQuery
+        ? rows.filter((r) => r.item.name.toLowerCase().includes(deferredItemQuery))
+        : rows);
+    }
+    if (!selectedCategory) return [];
+    const items = deferredItemQuery
+      ? selectedCategory.items.filter((i) => i.name.toLowerCase().includes(deferredItemQuery))
+      : selectedCategory.items;
+    return applySort(items.map((item) => ({
+      item,
+      categoryKey: selectedCategory.key,
+      categoryLabel: selectedCategory.label,
+    })));
+  }, [selectedKey, selectedCategory, petSubGroupRows, recentRows, deferredItemQuery, sortBy]);
+
+  // ── Unseen items (known drops/pets not yet obtained by this player) ────────
+  const unseenItems = useMemo<{ name: string; imageUrl: string; isPet: boolean }[]>(() => {
+    if (!selectedCategory) return [];
+    const obtainedNames = new Set(
+      selectedCategory.items.map((i) => i.name.toLowerCase()),
+    );
+    const drops = (selectedCategory.knownDrops ?? [])
+      .filter((d) => !obtainedNames.has(d.toLowerCase()))
+      .map((d) => ({
+        name: d,
+        imageUrl: `/items/${d.trim().replace(/\s+/g, '_')}.png`,
+        isPet: false,
+      }));
+    const pets = (selectedCategory.knownPets ?? [])
+      .filter((p) => !obtainedNames.has(p.toLowerCase()))
+      .map((p) => ({
+        name: p,
+        imageUrl: `/collection_logs/${p.trim().replace(/\s+/g, '_')}.png`,
+        isPet: true,
+      }));
+    return [...drops, ...pets];
+  }, [selectedCategory]);
+
+  function toggleGroup(g: string) {
+    setOpenGroups((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+  }
+
+  // ── Loading skeleton ──────────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="animate-fade-in overflow-hidden rounded-2xl border border-white/[0.06]">
+        <div className="flex" style={{ minHeight: 520 }}>
+          <div className="w-[172px] shrink-0 space-y-1 border-r border-white/[0.05] p-3">
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className="h-6 animate-pulse rounded-lg bg-white/[0.04]" style={{ animationDelay: `${i * 30}ms` }} />
+            ))}
+          </div>
+          <div className="flex-1 p-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', gap: 3, alignContent: 'start' }}>
+            {[...Array(48)].map((_, i) => (
+              <div key={i} className="aspect-square animate-pulse rounded-lg bg-white/[0.04]" style={{ animationDelay: `${i * 12}ms` }} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Error / unconfigured / empty ──────────────────────────────────────────────
+  if (!data || data.error) {
+    return (
+      <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-red-500/15 bg-gradient-to-b from-red-500/[0.06] to-transparent px-8 text-center">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-red-500/20 bg-red-500/10">
+          <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-red-300">Collection log unavailable</p>
+          <p className="mt-1 text-xs text-red-200/55">The server could not load drop history for this player.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data.configured) {
+    return (
+      <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-transparent px-8 text-center">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
+          <svg className="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+          </svg>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-slate-300">Collection log not configured</p>
+          <p className="mt-1 text-xs text-slate-600">{data.message ?? 'Import the PVM events dataset to enable this tab.'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (data.categories.length === 0) {
+    return (
+      <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-transparent px-8 text-center">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-amber-500/20 bg-amber-500/[0.07]">
+          <svg className="h-5 w-5 text-amber-400/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+          </svg>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-slate-300">No collection log entries yet</p>
+          <p className="mt-1 text-xs text-slate-600">Rare drops and pets will appear here once found in the tracker data.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main render ───────────────────────────────────────────────────────────────
+  return (
+    <div className="space-y-2.5 animate-fade-in">
+
+      {/* ── Stats ribbon ─────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl border border-white/[0.06] bg-[hsl(220_23%_11%)] px-4 py-2.5">
+        <span className="text-[10px] uppercase tracking-widest text-slate-600">
+          Unique&nbsp;<span className="font-bold tabular-nums text-amber-300">{data.summary.totalItems}</span>
+        </span>
+        <span className="hidden h-3.5 w-px bg-white/[0.07] sm:block" />
+        <span className="text-[10px] uppercase tracking-widest text-slate-600">
+          Sources&nbsp;<span className="font-bold tabular-nums text-sky-300">{data.summary.totalCategories}</span>
+        </span>
+        <span className="hidden h-3.5 w-px bg-white/[0.07] sm:block" />
+        <span className="text-[10px] uppercase tracking-widest text-slate-600">
+          Drops&nbsp;<span className="font-bold tabular-nums text-emerald-300">{data.summary.totalEvents}</span>
+        </span>
+        {data.summary.lastObtainedAt && (
+          <>
+            <span className="hidden h-3.5 w-px bg-white/[0.07] sm:block" />
+            <span className="text-[10px] text-slate-700">
+              Last:&nbsp;<span className="text-slate-500">{formatRelativeTime(data.summary.lastObtainedAt)}</span>
+              &nbsp;·&nbsp;
+              <span className="text-slate-600">{formatCalendarDate(data.summary.lastObtainedAt)}</span>
+            </span>
+          </>
+        )}
+      </div>
+
+      {/* ── Recent unlock strip ───────────────────────────────────────────── */}
+      {recentRows.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[hsl(220_23%_11%)]">
+          <p className="border-b border-white/[0.04] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+            Recent Unlocks
+          </p>
+          <div className="flex gap-2 overflow-x-auto p-2 scrollbar-hide">
+            {recentRows.slice(0, 10).map(({ item, categoryKey, categoryLabel }) => {
+              const rs = getItemRarityStyle(item.rarityTier);
+              return (
+                <button
+                  key={`${categoryKey}:${item.key}`}
+                  onClick={() => {
+                    const isPet = item.eventType === 'PET_OBTAINED';
+                    setSelectedKey(isPet ? `__pets:${getPetSubGroup(item.name)}__` : categoryKey);
+                    if (!isPet) {
+                      const g = getCollectionGroupName(categoryLabel, [item]);
+                      setOpenGroups((prev) => (prev.includes(g) ? prev : [...prev, g]));
+                    }
+                  }}
+                  className="flex shrink-0 items-center gap-2 rounded-lg border border-white/[0.06] bg-black/20 px-2.5 py-1.5 text-left transition-colors hover:border-white/[0.12] hover:bg-black/30"
+                >
+                  <div className={`h-6 w-6 shrink-0 overflow-hidden rounded-md border ${rs.border} bg-black/40 p-0.5`}>
+                    <img
+                      src={item.imageUrl ?? ''}
+                      alt={item.name}
+                      className="h-full w-full object-contain"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold leading-tight text-slate-200">{item.name}</p>
+                    <p className="text-[10px] leading-tight text-slate-600">
+                      {categoryLabel}&nbsp;·&nbsp;{item.lastObtainedAt ? formatRelativeTime(item.lastObtainedAt) : '—'}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Two-panel layout ──────────────────────────────────────────────── */}
+      <div className="flex overflow-hidden rounded-2xl border border-white/[0.06]" style={{ minHeight: 540 }}>
+
+        {/* Left sidebar */}
+        <aside className="flex w-[172px] shrink-0 flex-col border-r border-white/[0.06] bg-[hsl(220_23%_11%)]">
+
+          {/* All Recent row */}
+          <button
+            onClick={() => setSelectedKey('__recent__')}
+            className={`flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left transition-colors ${
+              selectedKey === '__recent__'
+                ? 'border-l-2 border-sky-500 bg-sky-600/10 pl-[10px]'
+                : 'border-l-2 border-transparent text-slate-400 hover:bg-white/[0.03] hover:text-slate-200'
+            }`}
+          >
+            <span className={`text-[11px] font-semibold ${selectedKey === '__recent__' ? 'text-sky-300' : ''}`}>
+              All Recent
+            </span>
+            <span className={`shrink-0 rounded px-1 py-0.5 text-[10px] tabular-nums ${selectedKey === '__recent__' ? 'bg-sky-600/25 text-sky-300' : 'bg-white/[0.04] text-slate-600'}`}>
+              {recentRows.length}
+            </span>
+          </button>
+
+          <div className="mx-3 border-t border-white/[0.05]" />
+
+          {/* Category search */}
+          <div className="px-2 py-1.5">
+            <input
+              value={sidebarQuery}
+              onChange={(e) => setSidebarQuery(e.target.value)}
+              placeholder="Filter categories…"
+              className="w-full rounded-lg border border-white/[0.06] bg-black/30 px-2.5 py-1 text-[11px] text-slate-300 outline-none placeholder:text-slate-700 focus:border-sky-500/40"
+            />
+          </div>
+
+          {/* Groups */}
+          <div className="flex-1 overflow-y-auto pb-2">
+            {categoryGroups.map(([group, cats]) => {
+              // Pets → collapsible group with Boss / Skilling / Other sub-rows
+              if (group === 'Pets') {
+                const petTotal = cats.reduce((s, c) => s + c.itemCount, 0);
+                const isPetsOpen = openGroups.includes('Pets') || !!deferredSidebarQuery;
+                return (
+                  <div key="Pets">
+                    <button
+                      onClick={() => toggleGroup('Pets')}
+                      className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left transition-colors hover:bg-white/[0.03]"
+                    >
+                      <svg
+                        className={`h-2.5 w-2.5 shrink-0 text-slate-600 transition-transform duration-150 ${isPetsOpen ? 'rotate-90' : ''}`}
+                        fill="currentColor"
+                        viewBox="0 0 8 8"
+                      >
+                        <path d="M2 1l4 3-4 3V1z" />
+                      </svg>
+                      <span className="flex-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Pets</span>
+                      <span className="text-[10px] tabular-nums text-slate-700">{petTotal}</span>
+                    </button>
+                    {isPetsOpen && (
+                      <div>
+                        {PET_SUB_ORDER.map((sub) => {
+                          const count = petSubGroupRows[sub].length;
+                          if (count === 0) return null;
+                          const subKey = `__pets:${sub}__`;
+                          return (
+                            <button
+                              key={subKey}
+                              onClick={() => setSelectedKey(subKey)}
+                              className={`flex w-full items-center gap-2 py-1 pr-3 text-left text-[11px] transition-colors ${
+                                selectedKey === subKey
+                                  ? 'border-l-2 border-sky-500 bg-sky-600/10 pl-[18px] text-sky-300'
+                                  : 'border-l-2 border-transparent pl-5 text-slate-400 hover:bg-white/[0.03] hover:text-slate-200'
+                              }`}
+                            >
+                              <span className="flex-1 truncate">{sub}</span>
+                              <span className={`shrink-0 text-[10px] tabular-nums ${selectedKey === subKey ? 'text-sky-400' : 'text-slate-700'}`}>
+                                {count}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              const isOpen = openGroups.includes(group) || !!deferredSidebarQuery;
+              const groupTotal = cats.reduce((s, c) => s + c.itemCount, 0);
+              return (
+                <div key={group}>
+                  <button
+                    onClick={() => toggleGroup(group)}
+                    className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left transition-colors hover:bg-white/[0.03]"
+                  >
+                    <svg
+                      className={`h-2.5 w-2.5 shrink-0 text-slate-600 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`}
+                      fill="currentColor"
+                      viewBox="0 0 8 8"
+                    >
+                      <path d="M2 1l4 3-4 3V1z" />
+                    </svg>
+                    <span className="flex-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">{group}</span>
+                    <span className="text-[10px] tabular-nums text-slate-700">{groupTotal}</span>
+                  </button>
+
+                  {isOpen && (
+                    <div>
+                      {cats.map((cat) => (
+                        <button
+                          key={cat.key}
+                          onClick={() => setSelectedKey(cat.key)}
+                          className={`flex w-full items-center gap-2 py-1 pr-3 text-left text-[11px] transition-colors ${
+                            selectedKey === cat.key
+                              ? 'border-l-2 border-sky-500 bg-sky-600/10 pl-[18px] text-sky-300'
+                              : 'border-l-2 border-transparent pl-5 text-slate-400 hover:bg-white/[0.03] hover:text-slate-200'
+                          }`}
+                        >
+                          <div className="flex w-full items-center gap-2">
+                            <span className="flex-1 truncate">{cat.label}</span>
+                            <span className={`shrink-0 text-[10px] tabular-nums ${selectedKey === cat.key ? 'text-sky-400' : 'text-slate-700'}`}>
+                              {cat.itemCount}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+
+        {/* Right content panel */}
+        <div className="flex min-w-0 flex-1 flex-col bg-[hsl(220_23%_9%)]">
+
+          {/* Panel header */}
+          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-white/[0.05] bg-[hsl(220_23%_10%)] px-4 py-2.5">
+            <div className="min-w-0 flex-1">
+              {selectedCategory ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-100">{selectedCategory.label}</h3>
+                  {selectedCategory.maxKills != null && (
+                    <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-amber-400">
+                      KC {formatNumber(selectedCategory.maxKills)}
+                    </span>
+                  )}
+                  <span className="text-[11px] text-slate-600">
+                    {selectedCategory.itemCount} {selectedCategory.itemCount === 1 ? 'item' : 'items'} · {selectedCategory.eventCount} {selectedCategory.eventCount === 1 ? 'drop' : 'drops'}
+                  </span>
+                  {selectedCategory.lastObtainedAt && (
+                    <span className="text-[11px] text-slate-700">last {formatRelativeTime(selectedCategory.lastObtainedAt)}</span>
+                  )}
+                </div>
+              ) : activePetSubGroup ? (
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-100">{activePetSubGroup} Pets</h3>
+                  <span className="text-[11px] text-slate-600">
+                    {petSubGroupRows[activePetSubGroup].length} {petSubGroupRows[activePetSubGroup].length === 1 ? 'pet' : 'pets'}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-100">All Recent</h3>
+                  <span className="text-[11px] text-slate-600">
+                    {recentRows.length} items · {data.summary.totalCategories} sources
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Controls */}
+            <div className="flex shrink-0 items-center gap-2">
+              {/* Sort */}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortKey)}
+                className="rounded-lg border border-white/[0.06] bg-black/30 py-1 pl-2 pr-6 text-[11px] text-slate-300 outline-none focus:border-sky-500/40 appearance-none cursor-pointer"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center' }}
+              >
+                <option value="date">Date</option>
+                <option value="kc">KC</option>
+                <option value="count">Count</option>
+                <option value="name">Name</option>
+              </select>
+              <label className="relative">
+                <svg
+                  className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" />
+                </svg>
+                <input
+                  value={itemQuery}
+                  onChange={(e) => setItemQuery(e.target.value)}
+                  placeholder="Search…"
+                  className="w-24 rounded-lg border border-white/[0.06] bg-black/30 py-1 pl-6 pr-2.5 text-[11px] text-slate-300 outline-none placeholder:text-slate-700 transition-all duration-200 focus:w-36 focus:border-sky-500/40"
+                />
+              </label>
+              <div className="flex overflow-hidden rounded-lg border border-white/[0.06]">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-2.5 py-1 text-[11px] transition-colors ${viewMode === 'grid' ? 'bg-sky-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  Grid
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`px-2.5 py-1 text-[11px] transition-colors ${viewMode === 'table' ? 'bg-sky-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  List
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Items area */}
+          <div className="flex-1 overflow-auto">
+            {displayRows.length === 0 ? (
+              <div className="flex min-h-[200px] items-center justify-center">
+                <p className="text-xs text-slate-700">No items found</p>
+              </div>
+
+            ) : viewMode === 'table' ? (
+              /* ── List / table view ─────────────────────────────────────── */
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10 bg-[hsl(220_23%_10%)]">
+                  <tr className="border-b border-white/[0.05]">
+                    <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-600">Item</th>
+                    {selectedKey === '__recent__' && (
+                      <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-600">Source</th>
+                    )}
+                    <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-slate-600">Type</th>
+                    <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-slate-600">KC</th>
+                    <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-slate-600">Count</th>
+                    <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-slate-600">Last</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.03]">
+                  {displayRows.map(({ item, categoryKey, categoryLabel }, idx) => {
+                    const rs = getItemRarityStyle(item.rarityTier);
+                    const fresh = isNewItem(item.lastObtainedAt);
+                    return (
+                      <motion.tr
+                        key={`${categoryKey}:${item.key}`}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.15, delay: Math.min(idx * 0.015, 0.4) }}
+                        className="cursor-pointer transition-colors hover:bg-white/[0.02]"
+                        onClick={() => setSelectedCard({ item, categoryLabel })}
+                      >
+                        <td className="px-4 py-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`h-5 w-5 shrink-0 overflow-hidden rounded-md border ${rs.border} bg-black/40 p-0.5`}>
+                              <img
+                                src={item.imageUrl ?? ''}
+                                alt={item.name}
+                                className="h-full w-full object-contain"
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            </div>
+                            <span className="font-semibold text-slate-100">{item.name}</span>
+                            {fresh && (
+                              <span className="rounded bg-sky-500/20 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-400">new</span>
+                            )}
+                          </div>
+                        </td>
+                        {selectedKey === '__recent__' && (
+                          <td className="px-3 py-2 text-slate-500">{categoryLabel}</td>
+                        )}
+                        <td className={`px-3 py-2 text-right font-medium ${item.eventType === 'PET_OBTAINED' ? 'text-violet-400' : 'text-sky-400'}`}>
+                          {item.eventType === 'PET_OBTAINED' ? 'Pet' : 'Drop'}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-amber-400">
+                          {item.firstKc != null ? item.firstKc.toLocaleString() : <span className="text-slate-700">—</span>}
+                        </td>
+                        <td className="px-3 py-2 text-right font-bold tabular-nums text-emerald-400">{item.obtainedCount}×</td>
+                        <td className="px-4 py-2 text-right tabular-nums text-slate-600">{formatCalendarDate(item.lastObtainedAt)}</td>
+                      </motion.tr>
+                    );
+                  })}
+                  {/* ── Unseen / not-yet-obtained items ────────────────── */}
+                  {unseenItems.map((u) => (
+                    <tr key={`unseen:${u.name}`} className="opacity-35">
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-5 w-5 shrink-0 overflow-hidden rounded-md border border-white/10 bg-black/40 p-0.5 grayscale">
+                            <img
+                              src={u.imageUrl}
+                              alt={u.name}
+                              className="h-full w-full object-contain"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          </div>
+                          <span className="font-semibold text-slate-400">{u.name}</span>
+                        </div>
+                      </td>
+                      {selectedKey === '__recent__' && <td />}
+                      <td className="px-3 py-2 text-right font-medium text-slate-600">{u.isPet ? 'Pet' : 'Drop'}</td>
+                      <td className="px-3 py-2 text-right text-slate-700">—</td>
+                      <td className="px-3 py-2 text-right text-slate-700">0×</td>
+                      <td className="px-4 py-2 text-right text-slate-700">—</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+            ) : (
+              /* ── Compact grid view ─────────────────────────────────────── */
+              <div
+                className="p-2.5"
+                style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', gap: 3 }}
+              >
+                {displayRows.map(({ item, categoryKey, categoryLabel }, idx) => {
+                  const rs = getItemRarityStyle(item.rarityTier);
+                  const fresh = isNewItem(item.lastObtainedAt);
+                  return (
+                    <motion.article
+                      key={`${categoryKey}:${item.key}`}
+                      initial={{ opacity: 0, scale: 0.82 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.18, delay: Math.min(idx * 0.012, 0.55), ease: 'easeOut' }}
+                      onClick={() => setSelectedCard({ item, categoryLabel })}
+                      className={`group relative cursor-pointer overflow-hidden rounded-lg border ${rs.border} ${rs.glow} bg-black/40 transition-all duration-150 hover:z-10 hover:scale-[1.12] hover:brightness-[1.15]`}
+                    >
+                      <div className="relative aspect-square">
+                        <img
+                          src={item.imageUrl ?? ''}
+                          alt={item.name}
+                          className="h-full w-full object-contain p-[3px]"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                        {/* Rarity dot */}
+                        <span className={`absolute right-[3px] top-[3px] h-[5px] w-[5px] rounded-full ${rs.dot} ${rs.pulse ? 'animate-pulse' : ''}`} />
+                        {/* Obtained count */}
+                        {item.obtainedCount > 1 && (
+                          <span className="absolute bottom-0 right-0 rounded-tl bg-black/80 px-[3px] py-px text-[8px] font-bold leading-tight tabular-nums text-emerald-400">
+                            {item.obtainedCount}
+                          </span>
+                        )}
+                        {/* New badge */}
+                        {fresh && (
+                          <span className="absolute bottom-0 left-0 rounded-tr bg-sky-500/90 px-[3px] py-px text-[7px] font-bold uppercase leading-tight tracking-wide text-white">
+                            new
+                          </span>
+                        )}
+                        {/* Pet badge */}
+                        {item.eventType === 'PET_OBTAINED' && (
+                          <span className="absolute left-0 top-0 rounded-br bg-violet-600/80 px-[3px] py-px text-[8px] font-bold leading-tight text-white">P</span>
+                        )}
+                      </div>
+                      {/* Item name */}
+                      <p className="truncate bg-black/30 px-0.5 pb-0.5 pt-px text-center text-[8px] leading-tight text-slate-600 group-hover:text-slate-300">
+                        {item.name}
+                      </p>
+                    </motion.article>
+                  );
+                })}
+                {/* ── Unseen / not-yet-obtained items ────────────────── */}
+                {unseenItems.map((u) => (
+                  <article
+                    key={`unseen:${u.name}`}
+                    title={u.name}
+                    className="group relative overflow-hidden rounded-lg border border-white/[0.06] bg-black/20 opacity-30 grayscale"
+                  >
+                    <div className="relative aspect-square">
+                      <img
+                        src={u.imageUrl}
+                        alt={u.name}
+                        className="h-full w-full object-contain p-[3px]"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                      {u.isPet && (
+                        <span className="absolute left-0 top-0 rounded-br bg-violet-600/50 px-[3px] py-px text-[8px] font-bold leading-tight text-white/60">P</span>
+                      )}
+                    </div>
+                    <p className="truncate bg-black/30 px-0.5 pb-0.5 pt-px text-center text-[8px] leading-tight text-slate-600">
+                      {u.name}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Item detail modal ─────────────────────────────────── */}
+      <AnimatePresence>
+        {selectedCard && (() => {
+          const { item, categoryLabel } = selectedCard;
+          const rs = getItemRarityStyle(item.rarityTier);
+          const fresh = isNewItem(item.lastObtainedAt);
+
+          // Obtained timeline
+          const firstMs = item.firstObtainedAt ? new Date(item.firstObtainedAt).getTime() : null;
+          const lastMs  = item.lastObtainedAt  ? new Date(item.lastObtainedAt).getTime()  : null;
+          const spanMs  = firstMs != null && lastMs != null && lastMs > firstMs ? lastMs - firstMs : null;
+
+          // Rarity gradient color
+          const rarityGradient: Record<string, string> = {
+            mythic:    'from-fuchsia-900/30',
+            legendary: 'from-rose-900/30',
+            epic:      'from-violet-900/25',
+            rare:      'from-amber-900/20',
+            uncommon:  'from-sky-900/20',
+            common:    'from-slate-800/10',
+            unknown:   'from-slate-800/10',
+          };
+          const gradFrom = rarityGradient[item.rarityTier] ?? 'from-slate-800/10';
+
+          return (
+            <motion.div
+              key="modal-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              onClick={() => setSelectedCard(null)}
+            >
+              {/* backdrop */}
+              <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" />
+              {/* card */}
+              <motion.div
+                key="modal-card"
+                initial={{ scale: 0.88, opacity: 0, y: 12 }}
+                animate={{ scale: 1,    opacity: 1, y: 0  }}
+                exit={{    scale: 0.92, opacity: 0, y: 8  }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                className={`relative w-full max-w-sm overflow-hidden rounded-2xl border ${rs.border} ${rs.glow} bg-[hsl(220_23%_11%)] shadow-2xl`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Rarity gradient wash */}
+                <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b ${gradFrom} to-transparent`} />
+
+                {/* Close button */}
+                <button
+                  onClick={() => setSelectedCard(null)}
+                  className="absolute right-3 top-3 z-10 rounded-full bg-black/40 p-1 text-slate-500 transition-colors hover:text-slate-200"
+                  aria-label="Close"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+
+                {/* Header band */}
+                <div className="relative flex items-center gap-4 border-b border-white/[0.06] px-5 py-4">
+                  <div className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border ${rs.border} bg-black/50 p-1.5`}>
+                    <img
+                      src={item.imageUrl ?? ''}
+                      alt={item.name}
+                      className="h-full w-full object-contain"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-base font-bold leading-snug text-slate-100">{item.name}</h4>
+                      {fresh && (
+                        <span className="rounded bg-sky-500/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-400">new</span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-slate-500">{categoryLabel}</p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${rs.text} bg-black/40 ${rs.border}`}>
+                        {rs.label}
+                      </span>
+                      <span className={`rounded-md border border-white/[0.06] bg-black/40 px-1.5 py-0.5 text-[10px] font-semibold ${item.eventType === 'PET_OBTAINED' ? 'text-violet-400' : 'text-sky-400'}`}>
+                        {item.eventType === 'PET_OBTAINED' ? 'Pet' : 'Drop'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats grid */}
+                <dl className="relative grid grid-cols-2 divide-x divide-y divide-white/[0.05]">
+                  <div className="px-5 py-3">
+                    <dt className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Kill Count</dt>
+                    <dd className="mt-1 text-sm font-semibold tabular-nums text-amber-400">
+                      {item.firstKc != null
+                        ? item.firstKc === item.lastKc || item.lastKc == null
+                          ? `KC ${item.firstKc.toLocaleString()}`
+                          : `KC ${item.firstKc.toLocaleString()} – ${item.lastKc.toLocaleString()}`
+                        : '—'}
+                    </dd>
+                  </div>
+                  <div className="px-5 py-3">
+                    <dt className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Times Obtained</dt>
+                    <dd className="mt-1 text-sm font-bold tabular-nums text-emerald-400">{item.obtainedCount}×</dd>
+                  </div>
+                  <div className="px-5 py-3">
+                    <dt className="text-[10px] font-bold uppercase tracking-widest text-slate-600">First Obtained</dt>
+                    <dd className="mt-1 text-sm tabular-nums text-slate-300">{formatCalendarDate(item.firstObtainedAt)}</dd>
+                  </div>
+                  <div className="px-5 py-3">
+                    <dt className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Last Obtained</dt>
+                    <dd className="mt-1 text-sm tabular-nums text-slate-300">{formatCalendarDate(item.lastObtainedAt)}</dd>
+                  </div>
+                </dl>
+
+                {/* Obtained timeline */}
+                {firstMs != null && lastMs != null && (
+                  <div className="relative border-t border-white/[0.05] px-5 py-3">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-600">Obtained Timeline</p>
+                    <div className="relative h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                      {spanMs != null && spanMs > 0 ? (
+                        <motion.div
+                          className={`absolute left-0 top-0 h-full rounded-full ${rs.dot}`}
+                          initial={{ width: '0%' }}
+                          animate={{ width: `${Math.max(4, Math.round((spanMs / (COLLECTION_LOG_NOW_MS - firstMs)) * 100))}%` }}
+                          transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
+                        />
+                      ) : (
+                        <div className={`h-full w-1 rounded-full ${rs.dot}`} />
+                      )}
+                    </div>
+                    <div className="mt-1.5 flex justify-between">
+                      <span className="text-[9px] tabular-nums text-slate-700">{formatCalendarDate(item.firstObtainedAt)}</span>
+                      <span className="text-[9px] tabular-nums text-slate-700">{formatCalendarDate(item.lastObtainedAt)}</span>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── Records Panel ────────────────────────────────────────────────────────────
 
 const RECORD_PERIODS: { key: PeriodKey; label: string }[] = [
@@ -1295,7 +2261,7 @@ function PlayerGroupsPanel({
     return (
       <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-white/5 bg-white/[0.03]">
         <div className="text-center">
-          <p className="text-2xl mb-2">👥</p>
+          <p className="text-2xl mb-2">ðŸ‘¥</p>
           <p className="text-sm font-medium text-slate-300">{username} isn&apos;t in any groups</p>
           <p className="mt-1 text-xs text-slate-500">Groups appear here once they join one.</p>
           <Link
@@ -1330,7 +2296,7 @@ function PlayerGroupsPanel({
                   </Link>
                   {group.is_private && (
                     <span className="text-[10px] rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-slate-500">
-                      🔒 Private
+                      ðŸ”’ Private
                     </span>
                   )}
                   <span className={`text-[10px] rounded-full px-2 py-0.5 font-medium ${badge.cls}`}>
@@ -1419,7 +2385,7 @@ function PlayerGroupsPanel({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PlayerPageClient({ username, isOwner }: { username: string; isOwner: boolean }) {
-  const [tab, setTab] = useState<'skills' | 'achievements' | 'gains' | 'records' | 'groups' | 'screenshot'>('skills');
+  const [tab, setTab] = useState<'skills' | 'collection' | 'achievements' | 'gains' | 'records' | 'groups' | 'screenshot'>('skills');
   const [tabMenuOpen, setTabMenuOpen] = useState(false);
   const [gainPeriod, setGainPeriod] = useState<'day' | 'week' | 'month' | 'all'>('week');
   const [screenshots, setScreenshots] = useState<Array<{ id: string; public_url: string; created_at: string }> | null>(null);
@@ -1518,7 +2484,7 @@ export default function PlayerPageClient({ username, isOwner }: { username: stri
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="max-w-sm text-center">
-          <p className="text-4xl mb-4">⚠️</p>
+          <p className="text-4xl mb-4">⚠ï¸</p>
           <h2 className="mb-2 text-lg font-semibold text-slate-200">Player not found</h2>
           <p className="mb-6 text-sm text-slate-500">
             <strong className="text-slate-300">{username.replace(/\b\w/g, c => c.toUpperCase())}</strong> doesn&apos;t appear on the
@@ -1553,6 +2519,7 @@ export default function PlayerPageClient({ username, isOwner }: { username: stri
 
   const TABS = [
     { key: 'skills', label: `Skills (${nonOverall.length})` },
+    { key: 'collection', label: 'Collection Log' },
     { key: 'achievements', label: 'Achievements' },
     { key: 'gains', label: 'XP Gains' },
     { key: 'records', label: 'Records' },
@@ -1774,6 +2741,11 @@ export default function PlayerPageClient({ username, isOwner }: { username: stri
             <SkillCard key={skill.id} skill={skill} />
           ))}
         </div>
+      )}
+
+      {/* ── Collection Log Tab ────────────────────────────────────────────── */}
+      {tab === 'collection' && (
+        <CollectionLogPanel username={username} />
       )}
 
       {/* ── Achievements Tab ──────────────────────────────────────────────── */}
