@@ -95,7 +95,8 @@ function normalizeKey(value: string): string {
  * Drops use /items/ (consistent OSRS-canonical naming).
  */
 function localItemImageUrl(eventType: CollectionEventType, itemName: string): string {
-  const filename = itemName.trim().replace(/\s+/g, '_') + '.png';
+  const t = itemName.trim();
+  const filename = (t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()).replace(/\s+/g, '_') + '.png';
   return eventType === 'PET_OBTAINED'
     ? `/collection_logs/${filename}`
     : `/items/${filename}`;

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -997,7 +997,7 @@ function AchievementProgress({ skills, username }: { skills: SkillData[]; userna
       {/* ── Left: Achievement Progress bars ──────────────────────────────── */}
       <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03]">
         <div className="flex items-center gap-2 border-b border-white/5 px-3 sm:px-4 py-2 sm:py-3">
-          <span className="text-base">ðŸ†</span>
+          <span className="text-base">🏆</span>
           <h2 className="text-sm font-semibold text-slate-200">Achievement Progress</h2>
         </div>
         <div className="divide-y divide-white/[0.04] py-1 sm:py-2">
@@ -1416,18 +1416,19 @@ function CollectionLogPanel({ username }: { username: string }) {
     const obtainedNames = new Set(
       selectedCategory.items.map((i) => i.name.toLowerCase()),
     );
+    const toSlug = (n: string) => { const t = n.trim(); return (t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()).replace(/\s+/g, '_'); };
     const drops = (selectedCategory.knownDrops ?? [])
       .filter((d) => !obtainedNames.has(d.toLowerCase()))
       .map((d) => ({
         name: d,
-        imageUrl: `/items/${d.trim().replace(/\s+/g, '_')}.png`,
+        imageUrl: `/items/${toSlug(d)}.png`,
         isPet: false,
       }));
     const pets = (selectedCategory.knownPets ?? [])
       .filter((p) => !obtainedNames.has(p.toLowerCase()))
       .map((p) => ({
         name: p,
-        imageUrl: `/collection_logs/${p.trim().replace(/\s+/g, '_')}.png`,
+        imageUrl: `/collection_logs/${toSlug(p)}.png`,
         isPet: true,
       }));
     return [...drops, ...pets];
@@ -2261,7 +2262,7 @@ function PlayerGroupsPanel({
     return (
       <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-white/5 bg-white/[0.03]">
         <div className="text-center">
-          <p className="text-2xl mb-2">ðŸ‘¥</p>
+          <p className="text-2xl mb-2">👥</p>
           <p className="text-sm font-medium text-slate-300">{username} isn&apos;t in any groups</p>
           <p className="mt-1 text-xs text-slate-500">Groups appear here once they join one.</p>
           <Link
@@ -2296,7 +2297,7 @@ function PlayerGroupsPanel({
                   </Link>
                   {group.is_private && (
                     <span className="text-[10px] rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-slate-500">
-                      ðŸ”’ Private
+                      🔒 Private
                     </span>
                   )}
                   <span className={`text-[10px] rounded-full px-2 py-0.5 font-medium ${badge.cls}`}>
