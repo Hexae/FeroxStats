@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect, useRef, startTransition, useMemo } from 'react';
 import useSWR from 'swr';
@@ -314,7 +315,15 @@ export default function Navbar() {
 
         {/* Logo - desktop */}
         <Link href="/" className="hidden lg:flex items-center gap-2.5 shrink-0 mr-6">
-          <img src="/logo/logo.png" alt="FeroxStats" className="h-8 w-auto" />
+          <Image
+            src="/logo/logo.png"
+            alt="FeroxStats"
+            width={32}
+            height={32}
+            sizes="32px"
+            className="h-8 w-8"
+            priority
+          />
           <span className="font-bold text-base tracking-tight text-white">
             Ferox<span className="text-blue-400">Stats</span>
           </span>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -78,12 +79,12 @@ function ItemIcon({ name, size = 24 }: { name: string; size?: number }) {
     );
   }
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       src={src}
       alt={name}
       width={size}
       height={size}
+      sizes={`${size}px`}
       className="object-contain flex-shrink-0"
       onError={() => setErr(true)}
       loading="lazy"
